@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: tierra-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tierra
+    username: ${DB_USUARIO:tierra_app}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      # usar 'validate' en producción una vez que las tablas se crean con el schema.sql;
+      # 'update' solo sirve para desarrollo local
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
+
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN}
+  url-exito: ${MP_URL_EXITO:http://localhost:3000/checkout/exito}
+  url-fallo: ${MP_URL_FALLO:http://localhost:3000/checkout/error}
+  url-pendiente: ${MP_URL_PENDIENTE:http://localhost:3000/checkout/pendiente}
+
+# La password de la base y el access token de Mercado Pago NUNCA van hardcodeados
+# acá: se leen de variables de entorno (DB_PASSWORD, MP_ACCESS_TOKEN). En desarrollo
+# local se definen en un archivo .env que NO se sube al repositorio (ver .gitignore).
+# Usar el access token de TEST (empieza con "TEST-") mientras se desarrolla.

@@ -46,16 +46,19 @@ export default async function HomePage() {
 
   return (
     <div>
-      <section className="relative h-[420px] flex items-center overflow-hidden bg-tierra-crema-oscuro">
-        {/* Foto real del boceto (recortada para dejar el título como texto,
-            no como imagen — así sigue siendo accesible y editable). */}
+      <section className="relative h-[500px] flex items-center overflow-hidden bg-tierra-crema-oscuro">
+        {/* Foto real del boceto (sin el texto/botones quemados) ocupando
+            todo el rectángulo. object-position corrido hacia arriba para
+            que entre la figura completa, cabeza incluida — object-cover
+            por defecto recorta desde el centro y la cortaba. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/brand/hero.png"
+          src="/images/brand/hero.jpg"
           alt=""
-          className="absolute right-0 top-0 h-full w-auto max-w-[70%] object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: "60% 35%" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-tierra-crema-oscuro via-tierra-crema-oscuro/70 to-transparent md:to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-tierra-crema-oscuro via-tierra-crema-oscuro/60 to-transparent" />
 
         <div className="relative max-w-6xl mx-auto px-6 w-full">
           <div className="max-w-md">
@@ -111,12 +114,18 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="bg-tierra-crema-oscuro">
-        <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-8">
+      <section className="bg-tierra-crema-oscuro relative overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/brand/cordillera.png"
+          alt=""
+          className="hidden md:block absolute right-0 bottom-0 w-1/2 h-full object-cover object-bottom opacity-70"
+        />
+        <div className="relative max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/brand/sello.png" alt="Sello Tierra" className="w-24 h-24 shrink-0" />
           <div className="flex-1 text-center md:text-left">
-            <p className="text-xl font-medium text-tierra-bordo-oscuro">Somos Tierra</p>
+            <p className="text-xl font-bold uppercase text-tierra-bordo-oscuro">Somos Tierra</p>
             <p className="mt-1 text-tierra-bordo-oscuro/80">
               Vivimos la montaña tanto como vos. Seleccionamos los mejores productos para que cada salida
               sea una experiencia única.

@@ -64,3 +64,15 @@ export function MountainIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+// Cordillera con varios picos superpuestos — para fondos decorativos
+// anchos (ej. la sección "Somos Tierra"), a diferencia de MountainIcon
+// que es un ícono chico de una sola montaña.
+export function MountainRangeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 900 260" className={className} fill="none" stroke="currentColor" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M0 250 L110 90 L190 190 L260 60 L340 190 L430 40 L520 190 L600 100 L690 200 L760 130 L840 220 L900 160" />
+      <path d="M0 250 L110 90 L190 190 L260 60 L340 190 L430 40 L520 190 L600 100 L690 200 L760 130 L840 220 L900 160 L900 260 L0 260 Z" fill="currentColor" fillOpacity="0.06" stroke="none" />
+    </svg>
+  );
+}

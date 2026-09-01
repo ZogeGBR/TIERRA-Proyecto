@@ -4,14 +4,6 @@
 -- contenedor de Postgres arranca por primera vez.
 -- =========================================================
 
--- ---------- UBICACIONES ----------
--- 'Depósito' es obligatoria: PagoService.confirmarPago busca la
--- ubicación con tipo 'deposito' para registrar el egreso de las
--- ventas web. Sin esta fila, confirmar un pago online falla.
-INSERT INTO ubicaciones (id, nombre, tipo) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'Local Esquel', 'local'),
-  ('a0000000-0000-0000-0000-000000000002', 'Depósito', 'deposito');
-
 -- ---------- MARCAS ----------
 INSERT INTO marcas (id, nombre) VALUES
   ('b0000000-0000-0000-0000-000000000001', 'Scott'),
@@ -72,8 +64,8 @@ INSERT INTO imagenes_producto (producto_id, url, orden) VALUES
   ('d0000000-0000-0000-0000-000000000006', 'data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20300%20300%27%3E%3Crect%20width%3D%27300%27%20height%3D%27300%27%20fill%3D%27%235C2A32%27/%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27white%27%20stroke-width%3D%2710%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%22M120%2060%20Q150%2040%20180%2060%20L180%2080%20L230%20110%20L215%20170%20L180%20150%20L180%20250%20L120%20250%20L120%20150%20L85%20170%20L70%20110%20L120%2080%20Z%22/%3E%3Cpath%20d%3D%22M150%2060%20L150%20100%22/%3E%3C/g%3E%3C/svg%3E', 0),
   ('d0000000-0000-0000-0000-000000000007', '/images/products/casco-montana.png', 0);
 
--- ---------- VARIANTES (con stock_fisico ya cargado) ----------
-INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock_fisico, stock_reservado) VALUES
+-- ---------- VARIANTES (stock exclusivo de la venta online) ----------
+INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado) VALUES
   ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'BICI-MTB29-UN', 'Único', 'Negro', 5, 0),
 
   ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-S-AZU', 'S', 'Azul', 8, 0),

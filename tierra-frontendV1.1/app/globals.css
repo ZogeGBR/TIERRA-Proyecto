@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  /* Degradé cálido sutil en vez de un color plano — da más profundidad
+     sin perder la identidad crema/tierra de la marca. */
+  background: linear-gradient(180deg, #F8EEDB 0%, #F5E7D0 40%, #F0DEBE 100%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+@layer components {
+  /* Botones consistentes en todo el sitio — antes cada página repetía
+     sus propias clases de Tailwind con pequeñas inconsistencias de
+     padding, hover y foco. */
+  .btn-primario {
+    @apply bg-tierra-azul text-white px-5 py-3 rounded-full font-medium
+           inline-flex items-center justify-center gap-2
+           transition-colors hover:bg-tierra-bordo
+           focus:outline-none focus:ring-2 focus:ring-tierra-azul focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-tierra-azul;
+  }
+  .btn-secundario {
+    @apply bg-white text-tierra-bordo-oscuro px-5 py-3 rounded-full font-medium
+           inline-flex items-center justify-center gap-2 border border-tierra-bordo-oscuro/20
+           transition-colors hover:bg-tierra-crema-oscuro
+           focus:outline-none focus:ring-2 focus:ring-tierra-bordo-oscuro focus:ring-offset-2;
+  }
+  .btn-naranja {
+    @apply bg-tierra-naranja text-white px-6 py-3 rounded-full font-medium
+           inline-flex items-center justify-center gap-2
+           transition-colors hover:brightness-95
+           focus:outline-none focus:ring-2 focus:ring-tierra-naranja focus:ring-offset-2
+           disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-icono {
+    @apply w-8 h-8 rounded-full border border-tierra-crema-oscuro flex items-center justify-center
+           text-tierra-bordo-oscuro transition-colors hover:bg-tierra-crema-oscuro
+           focus:outline-none focus:ring-2 focus:ring-tierra-bordo-oscuro;
+  }
+}

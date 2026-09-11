@@ -14,12 +14,12 @@ Pagina/
 │   ├── docker-compose.yml # Definición del contenedor tierra-postgres
 │   └── init-db/           # Scripts SQL iniciales (01-schema.sql y 02-seed-data.sql)
 │
-├── tierra-backendV8/      # API REST en Spring Boot 3 + Java 17 + Hibernate
+├── tierra-backend/      # API REST en Spring Boot 3 + Java 17 + Hibernate
 │   ├── src/               # Controladores, Servicios, Entidades JPA, DTOs y Jobs
 │   ├── schema.sql         # Esquema relacional v3 de referencia
 │   └── pom.xml            # Dependencias de Maven
 │
-├── tierra-frontendV1.1/   # Interfaz web en Next.js 14 + React 18 + TailwindCSS
+├── tierra-frontend/   # Interfaz web en Next.js 14 + React 18 + TailwindCSS
 │   ├── app/               # Rutas de App Router (catálogo, carrito, checkout, alquiler)
 │   ├── components/        # Componentes reutilizables de UI
 │   └── package.json       # Dependencias de Node.js
@@ -92,7 +92,7 @@ El orden correcto de inicio es: **1. Base de Datos ➜ 2. Backend ➜ 3. Fronten
 1. Abrí la aplicación **Docker Desktop** en Windows y esperá a que indique *"Engine running"*.
 2. En una terminal de PowerShell, situate en la carpeta `tierra-infra` y levantá el contenedor:
    ```powershell
-   cd c:\Mati\F97\Tierra\Pagina\tierra-infra
+   cd tierra-infra
    docker compose up -d
    ```
 3. La primera vez se ejecutarán automáticamente los scripts dentro de `init-db/`:
@@ -117,14 +117,14 @@ El orden correcto de inicio es: **1. Base de Datos ➜ 2. Backend ➜ 3. Fronten
 El backend corre en el puerto **`8080`** y se conecta a PostgreSQL en `localhost:5432`.
 
 #### Opción recomendada: Ejecutar desde el IDE
-1. Abrí el archivo [`TierraApplication.java`](tierra-backendV8/src/main/java/com/tierra/ecommerce/TierraApplication.java).
+1. Abrí el archivo [`TierraApplication.java`](tierra-backend/src/main/java/com/tierra/ecommerce/TierraApplication.java).
 2. Hacé clic en el botón **Run** o **Debug** arriba de la función `main` o en el panel de ejecución.
 3. El proyecto ya incluye el archivo `.vscode/launch.json` configurado con las variables de entorno de desarrollo (`DB_PASSWORD` y `MP_ACCESS_TOKEN`).
 
 #### Opción alternativa: Ejecutar por consola (PowerShell)
-En una terminal en la carpeta `tierra-backendV8`:
+En una terminal en la carpeta `tierra-backend`:
 ```powershell
-cd c:\Mati\F97\Tierra\Pagina\tierra-backendV8
+cd c:\Mati\F97\Tierra\Pagina\tierra-backend
 $env:DB_PASSWORD="tierra_dev_local"
 $env:MP_ACCESS_TOKEN="TEST-0000000000000000-000000-00000000000000000000000000000000-000000000"
 $env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"
@@ -147,7 +147,7 @@ En **otra ventana de terminal**:
 
 1. Navegá a la carpeta del frontend:
    ```powershell
-   cd c:\Mati\F97\Tierra\Pagina\tierra-frontendV1.1
+   cd c:\Mati\F97\Tierra\Pagina\tierra-frontend
    ```
 2. Creá el archivo de variables locales de entorno (solo la primera vez):
    ```powershell

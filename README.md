@@ -1,5 +1,8 @@
 # Tierra — Plataforma E-Commerce & Alquiler Outdoor
 
+
+> 📌 **Antes de tu primer commit**, leé [CONTRIBUTING.md](CONTRIBUTING.md): convenciones de ramas, commits y configuración inicial de tu máquina.
+
 Plataforma integral de comercio electrónico para la venta de bicicletas, indumentaria y accesorios outdoor, junto con el sistema de alquiler de equipos de nieve e invierno en la Patagonia.
 
 ---

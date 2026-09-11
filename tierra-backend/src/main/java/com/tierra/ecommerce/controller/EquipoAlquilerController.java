@@ -36,9 +36,23 @@ public class EquipoAlquilerController {
         return disponibilidadService.buscarDisponibles(tipoId, fechaInicio, fechaFin);
     }
 
-    @PostMapping("/reservas")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ReservaResponseDTO reservar(@Valid @RequestBody CrearReservaRequest request) {
-        return reservaService.crearReserva(request);
-    }
+        // ===================================================================
+    // CONGELADO — decisión 0001 (docs/decisiones/0001-tierra-rental-consulta-whatsapp.md)
+    //
+    // Tierra Rental NO toma reservas en línea. El flujo real es: el usuario
+    // elige fechas y cantidad, se arma un mensaje de WhatsApp consultando
+    // disponibilidad, y la reserva se confirma en el local.
+    //
+    // Este endpoint queda comentado, no eliminado: el modelo de datos y el
+    // constraint EXCLUDE de no-solapamiento están bien resueltos y sirven tal
+    // cual si el módulo se vende como anexo más adelante.
+    //
+    // NO construir sobre este endpoint ni reactivarlo sin revisar la decisión.
+    // ===================================================================
+    //
+    // @PostMapping("/reservas")
+    // @ResponseStatus(HttpStatus.CREATED)
+    // public ReservaResponseDTO reservar(@Valid @RequestBody CrearReservaRequest request) {
+    //     return reservaService.crearReserva(request);
+    // }
 }

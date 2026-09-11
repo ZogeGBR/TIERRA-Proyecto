@@ -11,10 +11,6 @@ services:
       - "5432:5432"
     volumes:
       - tierra_pg_data:/var/lib/postgresql/data
-      # Todo lo que esté acá se ejecuta UNA sola vez, la primera vez que
-      # se crea el volumen. Si ya corriste esto antes y querés que se
-      # vuelva a cargar, borrá el volumen (ver README) y levantá de nuevo.
-      - ./init-db:/docker-entrypoint-initdb.d
 
 volumes:
   tierra_pg_data:

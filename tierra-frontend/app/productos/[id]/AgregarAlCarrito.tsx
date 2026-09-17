@@ -16,7 +16,8 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
 
   function handleAgregar() {
     if (!variante) return;
-    if (variante.stock < cantidad) {
+    const controla = variante.controlaStock !== false;
+    if (controla && variante.stock < cantidad) {
       setMensaje(`Solo quedan ${variante.stock} unidades de esta variante.`);
       return;
     }
@@ -47,18 +48,21 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
         onChange={(e) => setVarianteId(e.target.value)}
         className="border border-tierra-crema-oscuro rounded px-3 py-2 w-full transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
       >
-        {producto.variantes.map((v) => (
-          <option key={v.id} value={v.id} disabled={v.stock === 0}>
-            {[v.talla, v.color].filter(Boolean).join(" / ") || v.sku} {v.stock === 0 ? "(sin stock)" : ""}
-          </option>
-        ))}
+        {producto.variantes.map((v) => {
+          const sinStock = v.controlaStock !== false && v.stock === 0;
+          return (
+            <option key={v.id} value={v.id} disabled={sinStock}>
+              {[v.talla, v.color].filter(Boolean).join(" / ") || v.sku} {sinStock ? "(sin stock)" : ""}
+            </option>
+          );
+        })}
       </select>
 
       <div className="mt-4 flex items-center gap-3">
         <input
           type="number"
           min={1}
-          max={variante?.stock ?? 1}
+          max={variante?.controlaStock === false ? 99 : (variante?.stock ?? 1)}
           value={cantidad}
           onChange={(e) => setCantidad(Number(e.target.value))}
           className="border border-tierra-crema-oscuro rounded px-3 py-2 w-20 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"

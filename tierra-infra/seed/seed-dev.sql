@@ -65,8 +65,8 @@ INSERT INTO imagenes_producto (producto_id, url, orden) VALUES
   ('d0000000-0000-0000-0000-000000000007', '/images/products/casco-montana.png', 0);
 
 -- ---------- VARIANTES (stock exclusivo de la venta online) ----------
-INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado) VALUES
-  ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'BICI-MTB29-UN', 'Único', 'Negro', 5, 0),
+INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado, controla_stock) VALUES
+  ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'BICI-MTB29-UN', 'Único', 'Negro', 0, 0, false),
 
   ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-S-AZU', 'S', 'Azul', 8, 0),
   ('e0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-M-AZU', 'M', 'Azul', 10, 0),

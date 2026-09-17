@@ -15,5 +15,5 @@ public record ProductoDetalleDTO(
         List<VarianteDTO> variantes,
         List<String> imagenes
 ) {
-    public record VarianteDTO(UUID id, String sku, String talla, String color, int stock) {}
+    public record VarianteDTO(UUID id, String sku, String talla, String color, int stock, boolean controlaStock) {}
 }

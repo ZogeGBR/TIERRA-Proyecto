@@ -1,6 +1,6 @@
 -- =========================================================
 -- Datos de prueba para desarrollo local.
--- Migración Flyway V3: carga marcas, categorías, productos,
+-- Migración Flyway V4: carga marcas, categorías, productos,
 -- variantes con stock, equipo de alquiler y usuarios/direcciones de prueba.
 -- =========================================================
 
@@ -67,26 +67,28 @@ INSERT INTO imagenes_producto (producto_id, url, orden) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ---------- VARIANTES (stock exclusivo de la venta online) ----------
-INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado) VALUES
-  ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'BICI-MTB29-UN', 'Único', 'Negro', 5, 0),
+-- Nota: La bicicleta Scott (BICI-MTB29-UN) tiene controla_stock = false y stock = 0
+-- porque los productos Scott permanecen siempre disponibles sin control de unidades.
+INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado, controla_stock) VALUES
+  ('e0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'BICI-MTB29-UN', 'Único', 'Negro', 0, 0, false),
 
-  ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-S-AZU', 'S', 'Azul', 8, 0),
-  ('e0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-M-AZU', 'M', 'Azul', 10, 0),
-  ('e0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-L-NEG', 'L', 'Negro', 6, 0),
+  ('e0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-S-AZU', 'S', 'Azul', 8, 0, true),
+  ('e0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-M-AZU', 'M', 'Azul', 10, 0, true),
+  ('e0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 'CAMP-OUT-L-NEG', 'L', 'Negro', 6, 0, true),
 
-  ('e0000000-0000-0000-0000-000000000005', 'd0000000-0000-0000-0000-000000000003', 'MOCH-TRK50-VER', 'Único', 'Verde', 12, 0),
+  ('e0000000-0000-0000-0000-000000000005', 'd0000000-0000-0000-0000-000000000003', 'MOCH-TRK50-VER', 'Único', 'Verde', 12, 0, true),
 
-  ('e0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000004', 'CARP-2P-VER', 'Único', 'Verde', 7, 0),
+  ('e0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000004', 'CARP-2P-VER', 'Único', 'Verde', 7, 0, true),
 
-  ('e0000000-0000-0000-0000-000000000007', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-40', '40', 'Negro/Blanco', 4, 0),
-  ('e0000000-0000-0000-0000-000000000008', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-42', '42', 'Negro/Blanco', 6, 0),
-  ('e0000000-0000-0000-0000-000000000009', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-44', '44', 'Negro/Blanco', 3, 0),
+  ('e0000000-0000-0000-0000-000000000007', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-40', '40', 'Negro/Blanco', 4, 0, true),
+  ('e0000000-0000-0000-0000-000000000008', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-42', '42', 'Negro/Blanco', 6, 0, true),
+  ('e0000000-0000-0000-0000-000000000009', 'd0000000-0000-0000-0000-000000000005', 'ZAP-RUN-44', '44', 'Negro/Blanco', 3, 0, true),
 
-  ('e0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000006', 'BUZO-URB-M-GRIS', 'M', 'Gris', 9, 0),
-  ('e0000000-0000-0000-0000-000000000011', 'd0000000-0000-0000-0000-000000000006', 'BUZO-URB-L-GRIS', 'L', 'Gris', 9, 0),
+  ('e0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000006', 'BUZO-URB-M-GRIS', 'M', 'Gris', 9, 0, true),
+  ('e0000000-0000-0000-0000-000000000011', 'd0000000-0000-0000-0000-000000000006', 'BUZO-URB-L-GRIS', 'L', 'Gris', 9, 0, true),
 
-  ('e0000000-0000-0000-0000-000000000012', 'd0000000-0000-0000-0000-000000000007', 'CASCO-MONT-UN', 'Único', 'Verde', 8, 0)
-ON CONFLICT (id) DO NOTHING;
+  ('e0000000-0000-0000-0000-000000000012', 'd0000000-0000-0000-0000-000000000007', 'CASCO-MONT-UN', 'Único', 'Verde', 8, 0, true)
+ON CONFLICT (id) DO UPDATE SET controla_stock = EXCLUDED.controla_stock, stock = EXCLUDED.stock;
 
 -- ---------- ALQUILER DE INVIERNO ----------
 INSERT INTO tipos_equipo_alquiler (id, nombre) VALUES

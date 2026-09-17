@@ -47,8 +47,14 @@ public class VarianteProducto {
     @Column(name = "precio_adicional", nullable = false, precision = 12, scale = 2)
     private BigDecimal precioAdicional = BigDecimal.ZERO;
 
+    @Column(name = "controla_stock", nullable = false)
+    private boolean controlaStock = true;
+
     @Transient
     public int getDisponible() {
+        if (!controlaStock) {
+            return Integer.MAX_VALUE;
+        }
         return stock - stockReservado;
     }
 }

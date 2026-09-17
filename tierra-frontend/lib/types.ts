@@ -16,6 +16,7 @@ export interface VarianteProducto {
   talla: string | null;
   color: string | null;
   stock: number;
+  controlaStock?: boolean;
 }
 
 export interface ProductoDetalle {

@@ -7,6 +7,9 @@
     "dev": "npm --prefix tierra-frontend run dev",
     "build": "npm --prefix tierra-frontend run build",
     "start": "npm --prefix tierra-frontend run start",
-    "lint": "npm --prefix tierra-frontend run lint"
+    "lint": "npm --prefix tierra-frontend run lint",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   }
 }

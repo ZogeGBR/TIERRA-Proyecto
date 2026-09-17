@@ -9,10 +9,15 @@ import type {
   PreferenciaPago
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+function getApiUrl(): string {
+  if (typeof window === "undefined") {
+    return process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+}
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiUrl()}${path}`, {
     // Sin esto, Next.js cachea agresivamente las respuestas de fetch en el
     // servidor (incluso en desarrollo) — un catálogo con stock cambiante
     // nunca debería servir una respuesta vieja guardada en caché.

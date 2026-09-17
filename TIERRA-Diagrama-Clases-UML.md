@@ -56,6 +56,12 @@ classDiagram
         CANCELADO
     }
 
+    class TipoEntrega {
+        <<enumeration>>
+        ENVIO_DOMICILIO
+        RETIRO_LOCAL
+    }
+
     class MetodoPago {
         <<enumeration>>
         MERCADO_PAGO
@@ -226,6 +232,8 @@ classDiagram
 
     class Pedido {
         -UUID id
+        -TipoEntrega tipoEntrega
+        -DireccionEntrega direccionEntrega
         -EstadoPedido estado
         -BigDecimal subtotal
         -BigDecimal descuento
@@ -233,9 +241,20 @@ classDiagram
         -BigDecimal total
         -LocalDateTime creadoEn
         +getId() UUID
+        +getTipoEntrega() TipoEntrega
+        +getDireccionEntrega() DireccionEntrega
         +getEstado() EstadoPedido
         +calcularTotal() void
         +setEstado(EstadoPedido nuevoEstado) void
+    }
+
+    class DireccionEntrega {
+        <<embeddable>>
+        -String calle
+        -String numero
+        -String ciudad
+        -String provincia
+        -String codigoPostal
     }
 
     class PedidoItem {
@@ -376,7 +395,8 @@ classDiagram
 
     %% Pedidos (Venta Online)
     Usuario "1" <-- "0..*" Pedido : emite
-    Direccion "0..1" <-- "0..*" Pedido : despacha a
+    Pedido "1" --> "1" TipoEntrega : define entrega
+    Pedido "1" *-- "0..1" DireccionEntrega : contiene snapshot
     Cupon "0..1" <-- "0..*" Pedido : aplica
     Pedido "1" *-- "1..*" PedidoItem : contiene
     VarianteProducto "1" <-- "0..*" PedidoItem : refiere a
@@ -415,9 +435,10 @@ classDiagram
 
 ### A. Composición vs. Agregación vs. Asociación Simple
 1. **`Pedido` *-- `PedidoItem` (Composición)**: Un renglón de pedido no posee identidad de negocio independiente; si se elimina el pedido o se cancela en cascada, sus ítems perecen con él. Cada ítem guarda el `precioUnitario` histórico congelado al momento del check-out.
-2. **`ReservaAlquiler` *-- `ReservaItem` (Composición)**: La reserva es el contrato de alquiler global; los ítems representan el detalle de los equipos rentados en ese período.
-3. **`Producto` *-- `VarianteProducto` (Composición)**: Un producto base agrupa talles y colores; la variante física que se descuenta y vende pertenece exclusivamente a ese producto.
-4. **`Categoria` o-- `Categoria` (Jerarquía Reflexiva)**: Permite armar árboles multinivel (ej: `Equipamiento > Carpas / Mochilas` o `Ropa > Ropa de Nieve`).
+2. **`Pedido` *-- `DireccionEntrega` (Snapshot Embebido)**: En lugar de referenciar por clave foránea la tabla `direcciones` (lo que alteraría pedidos históricos si el usuario edita su perfil y trabaría el `ON DELETE CASCADE` de cuentas de usuario), los pedidos con `tipoEntrega = ENVIO_DOMICILIO` clonan los datos de la dirección como snapshot histórico inmutable.
+3. **`ReservaAlquiler` *-- `ReservaItem` (Composición)**: La reserva es el contrato de alquiler global; los ítems representan el detalle de los equipos rentados en ese período.
+4. **`Producto` *-- `VarianteProducto` (Composición)**: Un producto base agrupa talles y colores; la variante física que se descuenta y vende pertenece exclusivamente a ese producto.
+5. **`Categoria` o-- `Categoria` (Jerarquía Reflexiva)**: Permite armar árboles multinivel (ej: `Equipamiento > Carpas / Mochilas` o `Ropa > Ropa de Nieve`).
 
 ### B. Restricción Semántica `{xor}` en Pagos
 - La clase `Pago` posee una relación de asociación con `Pedido` y con `ReservaAlquiler`.

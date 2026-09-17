@@ -83,7 +83,8 @@ resto de los IDs):
 Usuario y dirección de prueba para probar el checkout directo contra la
 API (`CrearPedidoRequest` los pide porque todavía no hay login):
 - `usuarioId`: `99000000-0000-0000-0000-000000000001`
-- `direccionEnvioId`: `88000000-0000-0000-0000-000000000001`
+- `tipoEntrega`: `ENVIO_DOMICILIO` (o `RETIRO_LOCAL`)
+- `direccionEnvioId`: `88000000-0000-0000-0000-000000000001` (requerido si es domicilio)
 
 ## Qué todavía no vas a poder probar de punta a punta
 

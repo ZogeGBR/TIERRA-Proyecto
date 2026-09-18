@@ -32,7 +32,8 @@ export default function CheckoutPage() {
     try {
       const pedido = await api.pedidos.crear({
         usuarioId: "REEMPLAZAR-CON-USUARIO-LOGUEADO",
-        direccionEnvioId: "REEMPLAZAR-CON-DIRECCION-CREADA",
+        tipoEntrega: metodoEnvio === "domicilio" ? "ENVIO_DOMICILIO" : "RETIRO_LOCAL",
+        direccionEnvioId: metodoEnvio === "domicilio" ? "REEMPLAZAR-CON-DIRECCION-CREADA" : null,
         items: items.map((i) => ({ varianteId: i.varianteId, cantidad: i.cantidad }))
       });
 

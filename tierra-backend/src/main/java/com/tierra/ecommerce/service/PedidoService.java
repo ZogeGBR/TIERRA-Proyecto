@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+import com.tierra.ecommerce.enums.TipoEntrega;
+
 // A partir de v2: este service YA NO descuenta stock directamente (ese
 // era el bug de v1 — se descontaba antes de saber si el pago se iba a
 // aprobar). Acá solo se RESERVA vía InventarioService.reservarStockWeb;
@@ -50,12 +52,34 @@ public class PedidoService {
         Usuario usuario = usuarioRepository.findById(request.usuarioId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
 
-        Direccion direccion = direccionRepository.findById(request.direccionEnvioId())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Dirección de envío no encontrada"));
-
         Pedido pedido = new Pedido();
         pedido.setUsuario(usuario);
-        pedido.setDireccionEnvio(direccion);
+        pedido.setTipoEntrega(request.tipoEntrega());
+
+        if (request.tipoEntrega() == TipoEntrega.ENVIO_DOMICILIO) {
+            if (request.direccionEnvioId() == null) {
+                throw new IllegalArgumentException("La dirección de envío es obligatoria para envío a domicilio");
+            }
+            Direccion direccion = direccionRepository.findById(request.direccionEnvioId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Dirección de envío no encontrada"));
+
+            // Cerrar el agujero de la dirección ajena (validación IDOR)
+            if (!direccion.getUsuario().getId().equals(usuario.getId())) {
+                throw new RecursoNoEncontradoException("Dirección de envío no encontrada");
+            }
+
+            DireccionEntrega snapshot = new DireccionEntrega(
+                    direccion.getCalle(),
+                    direccion.getNumero(),
+                    direccion.getCiudad(),
+                    direccion.getProvincia(),
+                    direccion.getCodigoPostal()
+            );
+            pedido.setDireccionEntrega(snapshot);
+        } else {
+            pedido.setDireccionEntrega(null);
+        }
+
         pedido.setEstado(EstadoPedido.PENDIENTE);
         pedido.setSubtotal(BigDecimal.ZERO);
         pedido.setTotal(BigDecimal.ZERO);
@@ -119,7 +143,8 @@ public class PedidoService {
 
     private PedidoResponseDTO aResponseDTO(Pedido pedido) {
         return new PedidoResponseDTO(
-                pedido.getId(), pedido.getEstado(), pedido.getSubtotal(),
+                pedido.getId(), pedido.getTipoEntrega(), pedido.getDireccionEntrega(),
+                pedido.getEstado(), pedido.getSubtotal(),
                 pedido.getDescuento(), pedido.getCostoEnvio(), pedido.getTotal(), pedido.getCreadoEn()
         );
     }

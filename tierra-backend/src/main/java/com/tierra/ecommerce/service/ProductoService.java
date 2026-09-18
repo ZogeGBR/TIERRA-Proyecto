@@ -61,7 +61,7 @@ public class ProductoService {
                 producto.getGenero().name(),
                 producto.getPrecio(),
                 variantes.stream()
-                        .map(v -> new ProductoDetalleDTO.VarianteDTO(v.getId(), v.getSku(), v.getTalla(), v.getColor(), v.getDisponible()))
+                        .map(v -> new ProductoDetalleDTO.VarianteDTO(v.getId(), v.getSku(), v.getTalla(), v.getColor(), v.getDisponible(), v.isControlaStock()))
                         .toList(),
                 imagenes.stream().map(ImagenProducto::getUrl).toList()
         );

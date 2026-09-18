@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tierra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tierra
+      POSTGRES_USER: tierra_app
+      POSTGRES_PASSWORD: tierra_dev_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - tierra_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tierra_app -d tierra"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./tierra-backend
+    container_name: tierra-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USUARIO: tierra_app
+      DB_PASSWORD: tierra_dev_local
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-TEST-0000000000000000-000000-00000000000000000000000000000000-000000000}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./tierra-frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080/api
+    container_name: tierra-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api
+      INTERNAL_API_URL: http://backend:8080/api
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  tierra_pg_data:

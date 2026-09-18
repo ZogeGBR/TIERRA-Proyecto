@@ -39,6 +39,11 @@ public class InventarioService {
         VarianteProducto variante = varianteRepository.findByIdConBloqueo(varianteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Variante no encontrada: " + varianteId));
 
+        // Si la variante no controla stock (ej. bicicletas Scott), no se reserva ni descuenta
+        if (!variante.isControlaStock()) {
+            return null;
+        }
+
         if (variante.getDisponible() < cantidad) {
             throw new StockInsuficienteException(
                     "Stock insuficiente para %s (talla %s, color %s): disponibles %d, se pidieron %d"
@@ -70,6 +75,12 @@ public class InventarioService {
             VarianteProducto variante = varianteRepository.findByIdConBloqueo(reserva.getVariante().getId())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Variante no encontrada"));
 
+            if (!variante.isControlaStock()) {
+                reserva.setLiberada(true);
+                reservaStockRepository.save(reserva);
+                continue;
+            }
+
             variante.setStock(variante.getStock() - reserva.getCantidad());
             variante.setStockReservado(variante.getStockReservado() - reserva.getCantidad());
             varianteRepository.save(variante);
@@ -89,8 +100,10 @@ public class InventarioService {
         VarianteProducto variante = varianteRepository.findByIdConBloqueo(reserva.getVariante().getId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Variante no encontrada"));
 
-        variante.setStockReservado(Math.max(0, variante.getStockReservado() - reserva.getCantidad()));
-        varianteRepository.save(variante);
+        if (variante.isControlaStock()) {
+            variante.setStockReservado(Math.max(0, variante.getStockReservado() - reserva.getCantidad()));
+            varianteRepository.save(variante);
+        }
 
         reserva.setLiberada(true);
         reservaStockRepository.save(reserva);

@@ -16,6 +16,7 @@ export interface VarianteProducto {
   talla: string | null;
   color: string | null;
   stock: number;
+  controlaStock?: boolean;
 }
 
 export interface ProductoDetalle {
@@ -35,15 +36,28 @@ export interface ItemPedidoRequest {
   cantidad: number;
 }
 
+export type TipoEntrega = "ENVIO_DOMICILIO" | "RETIRO_LOCAL";
+
+export interface DireccionEntrega {
+  calle: string;
+  numero?: string | null;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+}
+
 export interface CrearPedidoRequest {
   usuarioId: string;
-  direccionEnvioId: string;
+  tipoEntrega: TipoEntrega;
+  direccionEnvioId?: string | null;
   codigoCupon?: string;
   items: ItemPedidoRequest[];
 }
 
 export interface PedidoResponse {
   id: string;
+  tipoEntrega: TipoEntrega;
+  direccionEntrega?: DireccionEntrega | null;
   estado: string;
   subtotal: number;
   descuento: number;

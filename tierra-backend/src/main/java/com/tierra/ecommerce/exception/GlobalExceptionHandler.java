@@ -33,6 +33,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
     }
 
+    // Credenciales inválidas. El mensaje es SIEMPRE el mismo, exista o no el
+    // email: si difiriera, cualquiera podría averiguar qué direcciones están
+    // registradas probando una por una.
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredenciales(CredencialesInvalidasException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    // 423 Locked: la cuenta existe y la contraseña podría ser correcta, pero
+    // hubo demasiados intentos fallidos. Se distingue del 401 a propósito, para
+    // que el frontend pueda explicar que hay que esperar en vez de insistir.
+    @ExceptionHandler(CuentaBloqueadaException.class)
+    public ResponseEntity<ErrorResponse> handleBloqueada(CuentaBloqueadaException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CuentaDeshabilitadaException.class)
+    public ResponseEntity<ErrorResponse> handleDeshabilitada(CuentaDeshabilitadaException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
+    }
+
     @ExceptionHandler(EmailYaRegistradoException.class)
     public ResponseEntity<ErrorResponse> handleEmailDuplicado(EmailYaRegistradoException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));

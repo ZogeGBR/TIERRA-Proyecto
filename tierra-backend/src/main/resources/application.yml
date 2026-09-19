@@ -9,6 +9,10 @@ spring:
 
   flyway:
     enabled: true
+    # Sólo el esquema. Los datos de prueba viven en db/dev y se suman
+    # únicamente con el perfil 'dev' activo (ver application-dev.yml).
+    # El default es el comportamiento de producción: si alguien olvida
+    # el perfil, la base queda sin datos de prueba — molesto pero inofensivo.
     locations: classpath:db/migration
     baseline-on-migrate: true
 

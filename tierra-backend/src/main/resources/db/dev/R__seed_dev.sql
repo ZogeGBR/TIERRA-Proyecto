@@ -1,7 +1,17 @@
 -- =========================================================
--- Datos de prueba para desarrollo local.
--- Migración Flyway V4: carga marcas, categorías, productos,
--- variantes con stock, equipo de alquiler y usuarios/direcciones de prueba.
+-- Datos de prueba para DESARROLLO LOCAL.
+--
+-- Migración REPETIBLE (R__), no versionada. Vive en db/dev/, que sólo
+-- se agrega a spring.flyway.locations cuando el perfil activo es 'dev'
+-- (ver application-dev.yml). En producción Flyway ni mira esta carpeta.
+--
+-- Al ser repetible corre después de todas las versionadas y se vuelve a
+-- ejecutar cada vez que cambia su contenido. Todos los INSERT usan
+-- ON CONFLICT DO NOTHING, así que re-ejecutarla es inofensivo: para
+-- sumar datos de prueba alcanza con editar este archivo y reiniciar.
+--
+-- Carga marcas, categorías, productos, variantes con stock, equipo de
+-- alquiler y usuarios/direcciones de prueba.
 -- =========================================================
 
 -- ---------- MARCAS ----------
@@ -107,10 +117,20 @@ INSERT INTO equipos_alquiler (id, tipo_id, marca_id, modelo, talla, numero_serie
   ('11000000-0000-0000-0000-000000000006', 'f0000000-0000-0000-0000-000000000004', NULL, 'Genérica', 'Único', 'BAS-0001', 'EXCELENTE', 2500, 15000, true)
 ON CONFLICT (id) DO NOTHING;
 
--- ---------- USUARIO DE PRUEBA ----------
+-- ---------- USUARIOS DE PRUEBA ----------
+-- Los tres tienen la misma contraseña: tierra2026
+-- Son hashes BCrypt reales (factor 12). No son secretos: este archivo
+-- sólo corre en desarrollo. Ver CONTRIBUTING.md §2.4.
+--
+-- El rol del vendedor es OPERADOR (antes STAFF, renombrado en V4 para
+-- que el código hable el mismo idioma que el contrato con el cliente).
 INSERT INTO usuarios (id, nombre, email, password_hash, telefono, dni, rol) VALUES
-  ('99000000-0000-0000-0000-000000000001', 'Usuario de Prueba', 'test@tierra.esquel', 'placeholder-no-es-un-hash-real', '+54 9 2945 000000', '30111222', 'CLIENTE'),
-  ('99000000-0000-0000-0000-000000000002', 'Vendedor Mostrador', 'mostrador@tierra.esquel', 'placeholder-no-es-un-hash-real', '+54 9 2945 000001', '30222333', 'STAFF')
+  ('99000000-0000-0000-0000-000000000001', 'Usuario de Prueba', 'test@tierra.esquel',
+   '$2b$12$Qv9fqdIa.Q14/whqUqYDUe/98nwtxwSbo1cmIGw6hIazXUCwRnbqO', '+54 9 2945 000000', '30111222', 'CLIENTE'),
+  ('99000000-0000-0000-0000-000000000002', 'Vendedor Mostrador', 'mostrador@tierra.esquel',
+   '$2b$12$tSKEXG/niOKpVf76/FKRqOtp/cErDuQ.CVFaTUV50z6LBE.QepTiW', '+54 9 2945 000001', '30222333', 'OPERADOR'),
+  ('99000000-0000-0000-0000-000000000003', 'Administradora Tierra', 'admin@tierra.esquel',
+   '$2b$12$F0uXbFOURXkd5.H6mDj03uoakevaiUT5hqu9gZUzlwwRfn9Se4eTy', '+54 9 2945 000002', NULL, 'ADMIN')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO direcciones (id, usuario_id, calle, numero, ciudad, provincia, codigo_postal, es_predeterminada) VALUES

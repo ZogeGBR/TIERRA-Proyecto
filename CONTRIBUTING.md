@@ -101,7 +101,7 @@ Completá tu `.env` con tu propio access token de prueba de Mercado Pago (se gen
 TIERRA-Proyecto/
 ├── tierra-infra/          # PostgreSQL 16 en Docker
 │   ├── docker-compose.yml
-│   └── seed/              # Datos de prueba (se cargan a mano, ver §6)
+│                          # (el seed vive en el backend, ver §6.3)
 │
 ├── tierra-backend/        # API REST — Spring Boot 3 + Java 17
 │   └── src/main/resources/db/migration/   # Migraciones de Flyway
@@ -238,14 +238,19 @@ Flyway crea las tablas al arrancar. En el log tenés que ver `Successfully appli
 
 ### 6.3 — Datos de prueba
 
-Solo la primera vez, o después de resetear la base. **Con el backend ya arrancado al menos una vez**, porque las tablas las crea Flyway:
+**No hay que hacer nada.** El seed lo carga Flyway al arrancar el backend, siempre que tengas `SPRING_PROFILES_ACTIVE=dev` en tu `.env` (§2.4).
 
-```powershell
-cd C:\ruta\al\repo
-Get-Content tierra-infra\seed\seed-dev.sql | docker exec -i tierra-postgres psql -U tierra_app -d tierra
-```
+Vive en `tierra-backend/src/main/resources/db/dev/R__seed_dev.sql` y es una migración **repetible**: si querés sumar productos de prueba, editá ese archivo y reiniciá el backend. No hace falta borrar la base — todos los `INSERT` usan `ON CONFLICT DO NOTHING`.
 
-Deberías ver varios `INSERT 0 N`.
+Los tres usuarios de prueba comparten la contraseña **`tierra2026`**:
+
+| Email | Rol |
+|---|---|
+| `test@tierra.esquel` | CLIENTE |
+| `mostrador@tierra.esquel` | OPERADOR |
+| `admin@tierra.esquel` | ADMIN |
+
+> Si arrancás **sin** el perfil `dev`, el backend levanta igual pero la base queda con el esquema vacío. Es a propósito: el comportamiento por defecto es el de producción, donde estos datos no tienen que existir.
 
 ### 6.4 — Frontend
 
@@ -275,7 +280,7 @@ docker compose down -v      # el -v borra el volumen y con él todos los datos
 docker compose up -d
 ```
 
-Después arrancá el backend (Flyway recrea las tablas) y volvé a cargar el seed.
+Después arrancá el backend: Flyway recrea las tablas y, con el perfil `dev`, vuelve a cargar el seed solo.
 
 ---
 

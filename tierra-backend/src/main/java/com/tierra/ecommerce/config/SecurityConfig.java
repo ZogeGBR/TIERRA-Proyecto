@@ -110,6 +110,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
                     .requestMatchers("/api/auth/yo", "/api/auth/logout").authenticated()
+                    // Crear un pedido necesita saber de quién es, y eso ahora
+                    // sale de la sesión. No es adelantar la etapa C: este
+                    // endpoint directamente no puede funcionar sin sesión.
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pedidos").authenticated()
                     // TODO (etapa C): reemplazar por las reglas reales. Hasta
                     // entonces la API sigue abierta y NO se despliega nada.
                     .anyRequest().permitAll())

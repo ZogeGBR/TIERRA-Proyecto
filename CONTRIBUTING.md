@@ -221,16 +221,23 @@ Esperá a ver `database system is ready to accept connections`. Si arrancás el 
 **Desde la consola:** hay que exportar las variables a mano. **Maven no lee el `.env`** — eso solo lo hace VS Code a través del `envFile` del `launch.json`.
 
 ```powershell
+cd tierra-backend
+.\run-dev.ps1
+```
+
+Ese script lee tu `.env` de la raíz, exporta las variables y arranca. Existe porque Maven, a diferencia de VS Code, no lee el `.env`, y olvidarse de una variable produce errores que no dicen cuál es la causa real: una password vacía aparece como *authentication failed*, y sin el perfil la base queda sin datos de prueba.
+
+Si preferís hacerlo a mano, son cinco variables y duran sólo mientras esa terminal esté abierta:
+
+```powershell
 $env:DB_USUARIO="tierra_app"
 $env:DB_PASSWORD="tierra_dev_local"
 $env:MP_ACCESS_TOKEN="TEST-0000000000000000-000000-00000000000000000000000000000000-000000000"
 $env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"
+$env:SPRING_PROFILES_ACTIVE="dev"
 
-cd tierra-backend
 .\mvnw spring-boot:run
 ```
-
-Las variables duran solo mientras esa terminal esté abierta. Si abrís otra, hay que declararlas de nuevo.
 
 `JAVA_TOOL_OPTIONS` **no es opcional en Windows**: ver §8.
 

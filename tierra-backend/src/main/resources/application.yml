@@ -26,6 +26,12 @@ spring:
 server:
   port: 8080
 
+# Parámetros de autenticación. Son decisiones que pueden cambiar sin tocar
+# código: el factor de costo de BCrypt se sube con los años, y el bloqueo
+# por intentos es una política, no un detalle técnico.
+auth:
+  bcrypt-costo: 12
+
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN}
   url-exito: ${MP_URL_EXITO:http://localhost:3000/checkout/exito}

@@ -4,9 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -72,6 +76,35 @@ public class GlobalExceptionHandler {
             detalle = "Los datos enviados no son válidos";
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(detalle));
+    }
+
+    // JSON mal formado, un enum con un valor que no existe, un campo con el
+    // tipo equivocado. Sin este handler caía en el genérico y el cliente
+    // recibía un 500 que parecía una falla del servidor.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleCuerpoIlegible(HttpMessageNotReadableException ex) {
+        // El mensaje interno incluye nombres de clases y a veces parte del
+        // cuerpo enviado: no se expone.
+        log.warn("Cuerpo de request ilegible: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("El cuerpo del pedido no tiene un formato válido"));
+    }
+
+    // Método equivocado sobre una ruta que existe: POST donde va GET, por
+    // ejemplo. Tiene que llegar como 405 y no como 500, o quien depura no
+    // tiene forma de distinguir un error de ruteo de una falla real.
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMetodoNoSoportado(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ErrorResponse("El método " + ex.getMethod() + " no está permitido en esta dirección"));
+    }
+
+    // Ruta inexistente. NoResourceFoundException es la que lanza Spring 6.1
+    // cuando no hay handler; NoHandlerFoundException queda por compatibilidad.
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponse> handleRutaNoEncontrada(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("La dirección solicitada no existe"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

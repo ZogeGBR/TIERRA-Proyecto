@@ -283,7 +283,21 @@ npm install
 npm run dev
 ```
 
-### 6.5 — Verificación
+### 6.5 — Scripts de verificación
+
+En `tierra-backend/` hay tres scripts que comprueban el comportamiento de la autenticación y los permisos. Conviene correrlos después de tocar `SecurityConfig`, `AuthService` o cualquier contrato de la API:
+
+| Script | Qué verifica |
+|---|---|
+| `probar-auth.ps1` | Login, logout, bloqueo por intentos, CSRF, exención del webhook |
+| `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío |
+| `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador |
+
+Cada caso imprime el código obtenido y el esperado. Todos tienen que decir `OK`.
+
+> Son un sustituto temporal de los tests automatizados, que llegan en la fase 5: sólo protegen mientras alguien se acuerde de ejecutarlos.
+
+### 6.6 — Verificación
 
 ```powershell
 Invoke-RestMethod "http://localhost:8080/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001"
@@ -293,7 +307,7 @@ Tiene que devolver la bicicleta de prueba. Y `http://localhost:3000` tiene que a
 
 > Usá `Invoke-RestMethod` y no `curl`: en PowerShell, `curl` es un alias de `Invoke-WebRequest`, que parsea la respuesta como HTML y te pide confirmación por seguridad.
 
-### 6.6 — Resetear la base desde cero
+### 6.7 — Resetear la base desde cero
 
 ```powershell
 cd tierra-infra
@@ -337,7 +351,7 @@ Por eso `JAVA_TOOL_OPTIONS=-Duser.timezone=UTC` es obligatorio. Si arrancás por
 
 Arrancaste por consola sin exportar `DB_PASSWORD`, y Spring resolvió `${DB_PASSWORD}` como cadena vacía. Ver §6.2.
 
-Si las variables están bien definidas, puede ser que el volumen de Postgres traiga datos viejos con otra password: reseteá la base (§6.6).
+Si las variables están bien definidas, puede ser que el volumen de Postgres traiga datos viejos con otra password: reseteá la base (§6.7).
 
 ### `mvn` no se reconoce como comando
 

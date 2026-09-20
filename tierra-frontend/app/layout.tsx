@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Work_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
@@ -29,11 +30,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${fraunces.variable} ${workSans.variable}`}>
       <body className="font-sans">
-        <CartProvider>
-          <Header />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-        </CartProvider>
+        {/* AuthProvider va por fuera: el carrito necesita reaccionar a la
+            sesión (vaciarse al cerrarla), no al revés. */}
+        <AuthProvider>
+          <CartProvider>
+            <Header />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

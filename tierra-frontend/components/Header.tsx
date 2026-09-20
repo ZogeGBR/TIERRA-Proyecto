@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Search, User, ShoppingCart, ChevronDown } from "lucide-react";
+import { Search, ShoppingCart, ChevronDown } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { MenuCuenta } from "@/components/MenuCuenta";
 
 export function Header() {
   const { items } = useCart();
@@ -45,9 +46,7 @@ export function Header() {
           <button aria-label="Buscar" className="btn-icono">
             <Search size={16} />
           </button>
-          <button aria-label="Mi cuenta" className="btn-icono">
-            <User size={16} />
-          </button>
+          <MenuCuenta />
           <Link href="/carrito" className="btn-icono relative" aria-label="Carrito">
             <ShoppingCart size={16} />
             {cantidadTotal > 0 && (

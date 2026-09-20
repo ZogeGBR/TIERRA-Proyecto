@@ -141,11 +141,21 @@ public class AuthService {
             return;
         }
         Usuario usuario = encontrado.get();
-        int intentos = usuario.getIntentosFallidos() + 1;
+
+        // Si el bloqueo anterior ya venció, el contador arranca de cero.
+        // Sin esto queda en el máximo para siempre: la persona espera los
+        // minutos, vuelve, se equivoca UNA vez y se bloquea de nuevo al
+        // instante. El bloqueo tiene que castigar una racha de intentos, no
+        // dejar la cuenta marcada.
+        boolean bloqueoVencido = usuario.getBloqueadoHasta() != null
+                && usuario.getBloqueadoHasta().isBefore(LocalDateTime.now());
+        int previos = bloqueoVencido ? 0 : usuario.getIntentosFallidos();
+
+        int intentos = previos + 1;
         usuario.setIntentosFallidos(intentos);
-        if (intentos >= intentosMaximos) {
-            usuario.setBloqueadoHasta(LocalDateTime.now().plusMinutes(bloqueoMinutos));
-        }
+        usuario.setBloqueadoHasta(intentos >= intentosMaximos
+                ? LocalDateTime.now().plusMinutes(bloqueoMinutos)
+                : null);
         usuarioRepository.save(usuario);
     }
 

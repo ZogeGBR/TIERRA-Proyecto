@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+// Ojo: la de Spring Security, NO java.nio.file.AccessDeniedException.
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -40,6 +42,21 @@ public class GlobalExceptionHandler {
     // Credenciales inválidas. El mensaje es SIEMPRE el mismo, exista o no el
     // email: si difiriera, cualquiera podría averiguar qué direcciones están
     // registradas probando una por una.
+    // Lo lanza @PreAuthorize cuando el rol no alcanza.
+    //
+    // Hace falta acá además del AccessDeniedHandler de SecurityConfig, porque
+    // son dos caminos distintos: aquél atrapa las denegaciones de la cadena de
+    // filtros (las reglas por URL), y éste las de nivel de método, que ocurren
+    // ya dentro del controller y por eso llegan al @RestControllerAdvice.
+    //
+    // Sin este handler, un 403 legítimo de @PreAuthorize cae en el genérico y
+    // el cliente recibe "ocurrió un error inesperado" con un 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccesoDenegado(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("No tenés permisos para hacer esto"));
+    }
+
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<ErrorResponse> handleCredenciales(CredencialesInvalidasException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));

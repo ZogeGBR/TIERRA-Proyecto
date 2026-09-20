@@ -37,6 +37,30 @@ function esMetodoSeguro(metodo?: string): boolean {
   return m === "GET" || m === "HEAD" || m === "OPTIONS";
 }
 
+// Devuelve el token, pidiéndole uno nuevo al backend si no hay.
+//
+// Hace falta porque el token no está siempre: al cerrar sesión, Spring lo
+// invalida y borra su cookie. Como las páginas del catálogo son Server
+// Components, el navegador puede pasar mucho tiempo sin hablar con el backend,
+// y el siguiente POST saldría sin token y sería rechazado con un 403 que al
+// usuario le aparece como "no tenés permisos" — confuso y falso.
+//
+// Cualquier GET sirve para que el backend emita el token. /auth/yo es el más
+// barato y responde igual (401) cuando no hay sesión. No hay riesgo de
+// recursión: es un método seguro, así que no vuelve a entrar acá.
+async function asegurarTokenCsrf(): Promise<string | null> {
+  const actual = leerTokenCsrf();
+  if (actual) return actual;
+
+  try {
+    await fetch(`${getApiUrl()}/auth/yo`, { credentials: "include", cache: "no-store" });
+  } catch {
+    // Si el backend no responde, seguimos igual: la petición original va a
+    // fallar con su propio error, que es el que conviene mostrar.
+  }
+  return leerTokenCsrf();
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -47,7 +71,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   // exigirlo obligaría a tener un token antes del primer GET — que es
   // justamente el que lo genera.
   if (!esMetodoSeguro(options?.method)) {
-    const token = leerTokenCsrf();
+    const token = await asegurarTokenCsrf();
     if (token) headers["X-XSRF-TOKEN"] = token;
   }
 

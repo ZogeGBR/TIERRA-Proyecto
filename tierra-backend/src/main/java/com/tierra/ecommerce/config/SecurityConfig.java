@@ -5,6 +5,7 @@ import com.tierra.ecommerce.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -108,15 +109,37 @@ public class SecurityConfig {
                             response.setStatus(HttpServletResponse.SC_NO_CONTENT)))
 
             .authorizeHttpRequests(auth -> auth
+                    // --- Público: el catálogo tiene que verse sin cuenta ---
+                    .requestMatchers(HttpMethod.GET, "/api/productos", "/api/productos/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/alquiler/**").permitAll()
                     .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
+
+                    // El webhook lo llama Mercado Pago, que no tiene ni puede
+                    // tener credenciales nuestras. Su protección es la firma
+                    // del pedido, no la autenticación (tarea 6). Va también
+                    // exento de CSRF, más arriba en esta misma clase.
+                    .requestMatchers(HttpMethod.POST, "/api/pagos/webhook").permitAll()
+
+                    // --- Requiere sesión ---
                     .requestMatchers("/api/auth/yo", "/api/auth/logout").authenticated()
-                    // Crear un pedido necesita saber de quién es, y eso ahora
-                    // sale de la sesión. No es adelantar la etapa C: este
-                    // endpoint directamente no puede funcionar sin sesión.
-                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pedidos").authenticated()
-                    // TODO (etapa C): reemplazar por las reglas reales. Hasta
-                    // entonces la API sigue abierta y NO se despliega nada.
-                    .anyRequest().permitAll())
+                    .requestMatchers(HttpMethod.POST, "/api/pedidos").authenticated()
+                    // Autenticado no alcanza: falta verificar que el pedido
+                    // sea de quien pide el link de pago. Esa comprobación va
+                    // en PagoService y es de la tarea 6 — está anotada como
+                    // hallazgo para quien la haga.
+                    .requestMatchers(HttpMethod.POST, "/api/pagos/pedidos/*/preferencia").authenticated()
+
+                    // --- Panel de administración (fase 3) ---
+                    // Todavía no existe ningún endpoint bajo /api/admin. La
+                    // regla se deja escrita para que la fase 3 siga el patrón
+                    // en vez de inventarlo, y para que un endpoint nuevo mal
+                    // ubicado no quede accesible por descuido.
+                    .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "OPERADOR")
+
+                    // Cierre por denegación. Un endpoint nuevo al que nadie le
+                    // asignó permisos falla en vez de quedar abierto: es el
+                    // error correcto, porque se nota enseguida.
+                    .anyRequest().denyAll())
 
             // La API no usa ninguno de los dos: el login es un endpoint JSON.
             .httpBasic(AbstractHttpConfigurer::disable)

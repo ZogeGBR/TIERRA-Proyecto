@@ -91,14 +91,13 @@ class PedidoServiceTest {
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CrearPedidoRequest request = new CrearPedidoRequest(
-                usuarioId,
                 TipoEntrega.ENVIO_DOMICILIO,
                 direccionId,
                 null,
                 List.of(new ItemPedidoRequest(varianteId, 1))
         );
 
-        PedidoResponseDTO response = pedidoService.crearPedido(request);
+        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
 
         assertNotNull(response);
         assertEquals(TipoEntrega.ENVIO_DOMICILIO, response.tipoEntrega());
@@ -124,14 +123,13 @@ class PedidoServiceTest {
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CrearPedidoRequest request = new CrearPedidoRequest(
-                usuarioId,
                 TipoEntrega.RETIRO_LOCAL,
                 null,
                 null,
                 List.of(new ItemPedidoRequest(varianteId, 1))
         );
 
-        PedidoResponseDTO response = pedidoService.crearPedido(request);
+        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
 
         assertNotNull(response);
         assertEquals(TipoEntrega.RETIRO_LOCAL, response.tipoEntrega());
@@ -144,16 +142,60 @@ class PedidoServiceTest {
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
 
         CrearPedidoRequest request = new CrearPedidoRequest(
-                usuarioId,
                 TipoEntrega.ENVIO_DOMICILIO,
                 null,
                 null,
                 List.of(new ItemPedidoRequest(varianteId, 1))
         );
 
-        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(request));
+        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(usuarioId, request));
     }
 
+    @Test
+    void crearPedido_conRetiroLocal_noCobraEnvio() {
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CrearPedidoRequest request = new CrearPedidoRequest(
+                TipoEntrega.RETIRO_LOCAL,
+                null,
+                null,
+                List.of(new ItemPedidoRequest(varianteId, 1))
+        );
+
+        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
+
+        // Antes se cobraba el envío igual, sin mirar el tipo de entrega,
+        // mientras el frontend mostraba el total sin él.
+        assertEquals(0, BigDecimal.ZERO.compareTo(response.costoEnvio()));
+        assertEquals(0, response.subtotal().compareTo(response.total()));
+    }
+
+    @Test
+    void crearPedido_conEnvioDomicilio_cobraEnvio() {
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
+        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CrearPedidoRequest request = new CrearPedidoRequest(
+                TipoEntrega.ENVIO_DOMICILIO,
+                direccionId,
+                null,
+                List.of(new ItemPedidoRequest(varianteId, 1))
+        );
+
+        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
+
+        assertTrue(response.costoEnvio().compareTo(BigDecimal.ZERO) > 0);
+        assertEquals(0, response.subtotal().add(response.costoEnvio()).compareTo(response.total()));
+    }
+
+    // Este test pasó a cubrir un caso real. Antes el usuarioId venía dentro
+    // del request, así que un atacante podía mandar el id de la víctima junto
+    // con una dirección suya y la comparación daba verdadero. Ahora el id sale
+    // de la sesión: lo único que puede mandar es la dirección, y no es suya.
     @Test
     void crearPedido_conDireccionDeOtroUsuario_lanzaRecursoNoEncontradoException() {
         Usuario otroUsuario = new Usuario();
@@ -164,13 +206,12 @@ class PedidoServiceTest {
         when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
 
         CrearPedidoRequest request = new CrearPedidoRequest(
-                usuarioId,
                 TipoEntrega.ENVIO_DOMICILIO,
                 direccionId,
                 null,
                 List.of(new ItemPedidoRequest(varianteId, 1))
         );
 
-        assertThrows(RecursoNoEncontradoException.class, () -> pedidoService.crearPedido(request));
+        assertThrows(RecursoNoEncontradoException.class, () -> pedidoService.crearPedido(usuarioId, request));
     }
 }

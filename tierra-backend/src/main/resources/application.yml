@@ -9,6 +9,10 @@ spring:
 
   flyway:
     enabled: true
+    # Sólo el esquema. Los datos de prueba viven en db/dev y se suman
+    # únicamente con el perfil 'dev' activo (ver application-dev.yml).
+    # El default es el comportamiento de producción: si alguien olvida
+    # el perfil, la base queda sin datos de prueba — molesto pero inofensivo.
     locations: classpath:db/migration
     baseline-on-migrate: true
 
@@ -21,6 +25,35 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      # Siete días de inactividad. Un e-commerce que deslogea todos los días
+      # vende menos, y como la cookie es httpOnly el riesgo de robo es bajo.
+      timeout: ${SESSION_TIMEOUT:7d}
+      cookie:
+        # httpOnly: ningún script del navegador puede leerla. Es la ventaja
+        # concreta de la sesión en cookie sobre guardar un token en localStorage.
+        http-only: true
+        # Primera capa contra CSRF: el navegador no manda la cookie en
+        # peticiones que vengan de otro sitio. La segunda es el token (ver
+        # SecurityConfig).
+        same-site: lax
+        # En producción va en true: la cookie viaja sólo por HTTPS. En
+        # desarrollo tiene que ser false porque localhost es HTTP.
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+# Parámetros de autenticación. Son decisiones que pueden cambiar sin tocar
+# código: el factor de costo de BCrypt se sube con los años, y el bloqueo
+# por intentos es una política, no un detalle técnico.
+auth:
+  bcrypt-costo: ${BCRYPT_COSTO:12}
+  intentos-maximos: ${LOGIN_INTENTOS_MAXIMOS:5}
+  bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}
+
+cors:
+  # Lista separada por comas. Nunca comodín: con credenciales habilitadas la
+  # especificación de CORS lo prohíbe y el navegador rechaza la respuesta.
+  origenes-permitidos: ${CORS_ORIGENES:http://localhost:3000}
 
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN}

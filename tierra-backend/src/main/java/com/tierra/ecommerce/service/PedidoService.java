@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.UUID;
 
 import com.tierra.ecommerce.enums.TipoEntrega;
 
@@ -47,9 +48,13 @@ public class PedidoService {
         this.inventarioService = inventarioService;
     }
 
+    // El usuarioId llega como parámetro y no dentro del request: sale de la
+    // sesión, no del cuerpo que manda el cliente. El service no conoce a Spring
+    // Security — el controller le pasa el id ya resuelto, y así esta clase
+    // sigue siendo probable sin levantar un contexto web.
     @Transactional
-    public PedidoResponseDTO crearPedido(CrearPedidoRequest request) {
-        Usuario usuario = usuarioRepository.findById(request.usuarioId())
+    public PedidoResponseDTO crearPedido(UUID usuarioId, CrearPedidoRequest request) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
 
         Pedido pedido = new Pedido();
@@ -63,7 +68,9 @@ public class PedidoService {
             Direccion direccion = direccionRepository.findById(request.direccionEnvioId())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Dirección de envío no encontrada"));
 
-            // Cerrar el agujero de la dirección ajena (validación IDOR)
+            // La dirección tiene que ser del usuario de la sesión. Responder
+            // "no encontrada" en vez de "no es tuya" es deliberado: no le
+            // confirma a nadie que el recurso existe.
             if (!direccion.getUsuario().getId().equals(usuario.getId())) {
                 throw new RecursoNoEncontradoException("Dirección de envío no encontrada");
             }
@@ -108,7 +115,17 @@ public class PedidoService {
         }
 
         BigDecimal descuento = calcularDescuento(request.codigoCupon(), subtotal);
-        BigDecimal costoEnvio = BigDecimal.valueOf(12000); // TODO: cálculo real por código postal / transportista
+
+        // Retirar en el local no cuesta nada. Antes se cobraba el envío igual,
+        // sin mirar el tipo de entrega, mientras el frontend mostraba el total
+        // sin él: el comprador veía un número y pagaba otro.
+        //
+        // El valor fijo de los envíos a domicilio sigue siendo de relleno. El
+        // cálculo real depende de la definición de envíos que falta cerrar con
+        // el cliente, y es trabajo de otra tarea.
+        BigDecimal costoEnvio = request.tipoEntrega() == TipoEntrega.RETIRO_LOCAL
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(12000); // TODO: cálculo real por código postal / transportista
         BigDecimal total = subtotal.subtract(descuento).add(costoEnvio).setScale(2, RoundingMode.HALF_UP);
 
         pedido.setSubtotal(subtotal);

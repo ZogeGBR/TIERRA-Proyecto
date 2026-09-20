@@ -56,7 +56,17 @@ Ajustá el número de versión al que te haya instalado winget. Verificá con `.
 
 > El `.vscode/settings.json` versionado apunta al JDK en la ruta por defecto de winget. Si instalás Temurin en otro lado, VS Code no lo va a encontrar y vas a tener que ajustar la ruta localmente — mejor instalarlo con el comando de arriba y no a mano.
 
-### 2.3 — Maven: no hace falta instalarlo
+### 2.3 — Scripts de PowerShell
+
+Windows bloquea por defecto los `.ps1` sin firmar, así que `run-dev.ps1` y los scripts de prueba no van a ejecutarse hasta que lo permitas. Una vez, para tu usuario:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+`RemoteSigned` permite los scripts locales y exige firma sólo a los descargados de internet. No requiere permisos de administrador. Si preferís no cambiarlo de forma permanente, `Set-ExecutionPolicy Bypass -Scope Process` afecta sólo a la terminal actual.
+
+### 2.4 — Maven: no hace falta instalarlo
 
 El repo incluye el wrapper. Usá siempre **`.\mvnw`**, nunca `mvn`:
 
@@ -67,7 +77,7 @@ El repo incluye el wrapper. Usá siempre **`.\mvnw`**, nunca `mvn`:
 
 La primera vez se descarga Maven solo.
 
-### 2.4 — Clonar y configurar el entorno
+### 2.5 — Clonar y configurar el entorno
 
 ```powershell
 git clone https://github.com/ZogeGBR/TIERRA-Proyecto.git
@@ -101,7 +111,7 @@ Completá tu `.env` con tu propio access token de prueba de Mercado Pago (se gen
 TIERRA-Proyecto/
 ├── tierra-infra/          # PostgreSQL 16 en Docker
 │   ├── docker-compose.yml
-│   └── seed/              # Datos de prueba (se cargan a mano, ver §6)
+│                          # (el seed vive en el backend, ver §6.3)
 │
 ├── tierra-backend/        # API REST — Spring Boot 3 + Java 17
 │   └── src/main/resources/db/migration/   # Migraciones de Flyway
@@ -202,6 +212,10 @@ No hace falta que cada commit deje la aplicación funcionando — para eso está
 
 El orden importa: **base de datos → backend → frontend**.
 
+> **Hay dos `docker-compose.yml` y hacen cosas distintas.** El de `tierra-infra/` levanta **sólo PostgreSQL**, y es el que se usa para desarrollar con el backend y el frontend corriendo en tu máquina — es el que describe esta sección. El de la raíz levanta **todo el stack en contenedores** (base, backend y frontend), y sirve para probar el conjunto o mostrarlo funcionando sin instalar nada.
+>
+> Los dos declaran un contenedor llamado `tierra-postgres` y usan el puerto 5432, así que **no pueden correr a la vez**. Y como `docker compose` busca el archivo subiendo por las carpetas padre, ejecutarlo desde una subcarpeta del repo puede agarrar el de la raíz sin que te des cuenta. Si te aparece un error de nombre de contenedor en uso, es esto: pará el otro con `docker compose down` desde la carpeta que corresponda.
+
 ### 6.1 — Base de datos
 
 Con Docker Desktop abierto y el motor corriendo:
@@ -221,16 +235,23 @@ Esperá a ver `database system is ready to accept connections`. Si arrancás el 
 **Desde la consola:** hay que exportar las variables a mano. **Maven no lee el `.env`** — eso solo lo hace VS Code a través del `envFile` del `launch.json`.
 
 ```powershell
+cd tierra-backend
+.\run-dev.ps1
+```
+
+Ese script lee tu `.env` de la raíz, exporta las variables y arranca. Existe porque Maven, a diferencia de VS Code, no lee el `.env`, y olvidarse de una variable produce errores que no dicen cuál es la causa real: una password vacía aparece como *authentication failed*, y sin el perfil la base queda sin datos de prueba.
+
+Si preferís hacerlo a mano, son cinco variables y duran sólo mientras esa terminal esté abierta:
+
+```powershell
 $env:DB_USUARIO="tierra_app"
 $env:DB_PASSWORD="tierra_dev_local"
 $env:MP_ACCESS_TOKEN="TEST-0000000000000000-000000-00000000000000000000000000000000-000000000"
 $env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"
+$env:SPRING_PROFILES_ACTIVE="dev"
 
-cd tierra-backend
 .\mvnw spring-boot:run
 ```
-
-Las variables duran solo mientras esa terminal esté abierta. Si abrís otra, hay que declararlas de nuevo.
 
 `JAVA_TOOL_OPTIONS` **no es opcional en Windows**: ver §8.
 
@@ -238,14 +259,19 @@ Flyway crea las tablas al arrancar. En el log tenés que ver `Successfully appli
 
 ### 6.3 — Datos de prueba
 
-Solo la primera vez, o después de resetear la base. **Con el backend ya arrancado al menos una vez**, porque las tablas las crea Flyway:
+**No hay que hacer nada.** El seed lo carga Flyway al arrancar el backend, siempre que tengas `SPRING_PROFILES_ACTIVE=dev` en tu `.env` (§2.5).
 
-```powershell
-cd C:\ruta\al\repo
-Get-Content tierra-infra\seed\seed-dev.sql | docker exec -i tierra-postgres psql -U tierra_app -d tierra
-```
+Vive en `tierra-backend/src/main/resources/db/dev/R__seed_dev.sql` y es una migración **repetible**: si querés sumar productos de prueba, editá ese archivo y reiniciá el backend. No hace falta borrar la base — todos los `INSERT` usan `ON CONFLICT DO NOTHING`.
 
-Deberías ver varios `INSERT 0 N`.
+Los tres usuarios de prueba comparten la contraseña **`tierra2026`**:
+
+| Email | Rol |
+|---|---|
+| `test@tierra.esquel` | CLIENTE |
+| `mostrador@tierra.esquel` | OPERADOR |
+| `admin@tierra.esquel` | ADMIN |
+
+> Si arrancás **sin** el perfil `dev`, el backend levanta igual pero la base queda con el esquema vacío. Es a propósito: el comportamiento por defecto es el de producción, donde estos datos no tienen que existir.
 
 ### 6.4 — Frontend
 
@@ -275,7 +301,7 @@ docker compose down -v      # el -v borra el volumen y con él todos los datos
 docker compose up -d
 ```
 
-Después arrancá el backend (Flyway recrea las tablas) y volvé a cargar el seed.
+Después arrancá el backend: Flyway recrea las tablas y, con el perfil `dev`, vuelve a cargar el seed solo.
 
 ---
 

@@ -27,6 +27,15 @@ mercadopago:
   url-exito: ${MP_URL_EXITO:http://localhost:3000/checkout/exito}
   url-fallo: ${MP_URL_FALLO:http://localhost:3000/checkout/error}
   url-pendiente: ${MP_URL_PENDIENTE:http://localhost:3000/checkout/pendiente}
+  # Clave secreta del webhook (distinta del access token). Se genera en el panel
+  # de MP: Tus integraciones -> tu aplicacion -> Webhooks -> Configurar notificaciones.
+  # Default vacio a proposito: sin ella, WebhookSignatureValidator rechaza (falla
+  # cerrado) cualquier notificacion en vez de tumbar el arranque de toda la app,
+  # porque este endpoint no hace falta para desarrollar el resto del sistema.
+  webhook-secret: ${MP_WEBHOOK_SECRET:}
+  # true SOLO en el servidor que cobra de verdad: exige webhook secret, URLs
+  # de retorno https y un token que no sea de prueba (la app no arranca si falta algo).
+  produccion: ${MP_PRODUCCION:false}
 
 # La password de la base y el access token de Mercado Pago NUNCA van hardcodeados
 # acá: se leen de variables de entorno (DB_PASSWORD, MP_ACCESS_TOKEN). En desarrollo

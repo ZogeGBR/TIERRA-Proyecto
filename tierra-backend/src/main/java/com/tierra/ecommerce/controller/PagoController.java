@@ -1,12 +1,14 @@
 package com.tierra.ecommerce.controller;
 
 import com.tierra.ecommerce.dto.PreferenciaPagoResponse;
+import com.tierra.ecommerce.security.UsuarioAutenticado;
 import com.tierra.ecommerce.service.PagoService;
 import com.tierra.ecommerce.service.WebhookSignatureValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -26,9 +28,12 @@ public class PagoController {
         this.webhookSignatureValidator = webhookSignatureValidator;
     }
 
+    // SecurityConfig exige sesión para llegar acá, así que el principal nunca
+    // llega nulo. De quién es el pedido lo decide la sesión, no el request.
     @PostMapping("/pedidos/{pedidoId}/preferencia")
-    public PreferenciaPagoResponse crearPreferencia(@PathVariable UUID pedidoId) {
-        return pagoService.crearPreferenciaPago(pedidoId);
+    public PreferenciaPagoResponse crearPreferencia(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                    @PathVariable UUID pedidoId) {
+        return pagoService.crearPreferenciaPago(pedidoId, usuario.getId());
     }
 
     // Mercado Pago llama a esta URL cuando cambia el estado de un pago.

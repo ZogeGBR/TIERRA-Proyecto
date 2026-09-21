@@ -13,9 +13,11 @@ import com.tierra.ecommerce.config.MercadoPagoProperties;
 import com.tierra.ecommerce.entity.Pago;
 import com.tierra.ecommerce.entity.Pedido;
 import com.tierra.ecommerce.entity.ReservaStock;
+import com.tierra.ecommerce.entity.Usuario;
 import com.tierra.ecommerce.enums.EstadoPago;
 import com.tierra.ecommerce.enums.EstadoPedido;
 import com.tierra.ecommerce.exception.PagoNoPermitidoException;
+import com.tierra.ecommerce.exception.RecursoNoEncontradoException;
 import com.tierra.ecommerce.repository.PagoRepository;
 import com.tierra.ecommerce.repository.PedidoRepository;
 import com.tierra.ecommerce.repository.ReservaStockRepository;
@@ -58,6 +60,7 @@ class PagoServiceTest {
     @Mock MercadoPagoProperties properties;
 
     PagoService pagoService;
+    Usuario usuario;
     Pedido pedido;
     ReservaStock reserva;
     List<Pago> pagosGuardados;
@@ -67,8 +70,12 @@ class PagoServiceTest {
         pagoService = new PagoService(properties, pedidoRepository, pagoRepository, inventarioService,
                 reservaStockRepository, preferenceClient, paymentClient, paymentRefundClient);
 
+        usuario = new Usuario();
+        usuario.setId(UUID.randomUUID());
+
         pedido = new Pedido();
         pedido.setId(UUID.randomUUID());
+        pedido.setUsuario(usuario);
         pedido.setEstado(EstadoPedido.PENDIENTE);
         pedido.setTotal(new BigDecimal("15000.00"));
 
@@ -267,6 +274,19 @@ class PagoServiceTest {
         }
 
         @Test
+        void pedidoSoloConProductosSinControlDeStockSeApruebaAunqueNoTengaReservas() throws Exception {
+            // Caso Scott: controla_stock = false no genera fila en reservas_stock.
+            when(reservaStockRepository.findByPedidoId(pedido.getId())).thenReturn(List.of());
+            pagoPendienteSinVincular();
+            mpPayment(111L, "approved", "15000");
+
+            pagoService.confirmarPago("111");
+
+            assertEquals(EstadoPedido.PAGADO, pedido.getEstado());
+            verify(paymentRefundClient, never()).refund(anyLong());
+        }
+
+        @Test
         void idNoNumericoSeIgnoraSinConsultarAMercadoPago() throws Exception {
             pagoService.confirmarPago("abc");
             verify(paymentClient, never()).get(anyLong());
@@ -294,7 +314,7 @@ class PagoServiceTest {
 
         @Test
         void generaLinkSeguroYConVencimiento() throws Exception {
-            var respuesta = pagoService.crearPreferenciaPago(pedido.getId());
+            var respuesta = pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
 
             assertEquals("https://mercadopago/checkout", respuesta.initPoint());
             ArgumentCaptor<PreferenceRequest> captor = ArgumentCaptor.forClass(PreferenceRequest.class);
@@ -309,28 +329,49 @@ class PagoServiceTest {
 
         @Test
         void apretarPagarVariasVecesNoCreaPagosPendientesDuplicados() {
-            pagoService.crearPreferenciaPago(pedido.getId());
-            pagoService.crearPreferenciaPago(pedido.getId());
-            pagoService.crearPreferenciaPago(pedido.getId());
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
 
             assertEquals(1, pagosGuardados.size());
         }
 
         @Test
+        void noSePuedeGenerarElLinkDePagoDeUnPedidoAjeno() {
+            UUID otroUsuario = UUID.randomUUID();
+            assertThrows(RecursoNoEncontradoException.class,
+                    () -> pagoService.crearPreferenciaPago(pedido.getId(), otroUsuario));
+            assertTrue(pagosGuardados.isEmpty());
+            verifyNoInteractions(preferenceClient);
+        }
+
+        @Test
+        void pedidoSoloConProductosSinControlDeStockTieneLinkDePagoConVencimiento() throws Exception {
+            when(reservaStockRepository.findByPedidoId(pedido.getId())).thenReturn(List.of());
+
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
+
+            ArgumentCaptor<PreferenceRequest> captor = ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(preferenceClient).create(captor.capture());
+            assertTrue(captor.getValue().getExpirationDateTo().toLocalDateTime()
+                    .isBefore(pedido.getCreadoEn().plusMinutes(InventarioService.TTL_RESERVA_MINUTOS)));
+        }
+
+        @Test
         void pedidoYaPagadoNoSePuedeVolverAPagar() {
             pedido.setEstado(EstadoPedido.PAGADO);
-            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId()));
+            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId()));
             assertTrue(pagosGuardados.isEmpty());
         }
 
         @Test
         void pedidoConReservaVencidaNoSePuedePagar() {
             reserva.setExpiraEn(LocalDateTime.now().plusMinutes(1));
-            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId()));
+            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId()));
 
             reserva.setExpiraEn(LocalDateTime.now().plusMinutes(15));
             reserva.setLiberada(true);
-            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId()));
+            assertThrows(PagoNoPermitidoException.class, () -> pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId()));
         }
     }
 

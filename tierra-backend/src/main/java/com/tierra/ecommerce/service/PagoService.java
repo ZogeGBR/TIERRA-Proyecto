@@ -47,7 +47,7 @@ import java.util.UUID;
 //   confirmarPago          -> llega el webhook: se consulta el pago real a MP y se concilia
 //   resolverPedidoVencido  -> el job de vencimientos cierra lo que nunca se pagó
 //
-// Reglas de seguridad (ver docs/decisiones/0002-conciliacion-pagos-mercado-pago.md):
+// Reglas de seguridad (ver docs/decisiones/0004-conciliacion-pagos-mercado-pago.md):
 // - Nunca se confía en datos que no vengan de la API de Mercado Pago.
 // - Un pedido solo pasa a PAGADO si el pago está aprobado, el monto y la moneda
 //   coinciden exactamente, el pedido sigue PENDIENTE y su stock sigue reservado.
@@ -104,11 +104,13 @@ public class PagoService {
     // 1. Link de pago
     // ------------------------------------------------------------------
 
-    // TODO(login): cuando exista autenticación, verificar acá que el pedido
-    // pertenece al usuario logueado antes de generar el link.
+    // usuarioId sale de la sesión (PagoController), nunca del request. Si el
+    // pedido es de otra persona se responde igual que si no existiera: así no
+    // se puede usar este endpoint para averiguar qué ids de pedido son válidos.
     @Transactional
-    public PreferenciaPagoResponse crearPreferenciaPago(UUID pedidoId) {
+    public PreferenciaPagoResponse crearPreferenciaPago(UUID pedidoId, UUID usuarioId) {
         Pedido pedido = pedidoRepository.findByIdConBloqueo(pedidoId)
+                .filter(p -> p.getUsuario() != null && p.getUsuario().getId().equals(usuarioId))
                 .orElseThrow(() -> new RecursoNoEncontradoException("Pedido no encontrado: " + pedidoId));
 
         if (pedido.getEstado() != EstadoPedido.PENDIENTE) {
@@ -119,14 +121,11 @@ public class PagoService {
         }
 
         List<ReservaStock> reservas = reservaStockRepository.findByPedidoId(pedido.getId());
-        if (reservas.isEmpty() || reservas.stream().anyMatch(ReservaStock::isLiberada)) {
+        if (algunaReservaLiberada(reservas)) {
             throw new PagoNoPermitidoException("Venció el tiempo para pagar este pedido. Volvé a armarlo.");
         }
-        LocalDateTime venceReserva = reservas.stream()
-                .map(ReservaStock::getExpiraEn)
-                .min(Comparator.naturalOrder())
-                .orElseThrow();
-        LocalDateTime vencePreferencia = venceReserva.minusMinutes(MARGEN_VENCIMIENTO_PREFERENCIA_MINUTOS);
+        LocalDateTime vencePreferencia = vencimientoDelPedido(pedido, reservas)
+                .minusMinutes(MARGEN_VENCIMIENTO_PREFERENCIA_MINUTOS);
         if (vencePreferencia.isBefore(LocalDateTime.now().plusMinutes(TIEMPO_MINIMO_PARA_PAGAR_MINUTOS))) {
             throw new PagoNoPermitidoException("Venció el tiempo para pagar este pedido. Volvé a armarlo.");
         }
@@ -346,8 +345,7 @@ public class PagoService {
         if (monto == null || pedido.getTotal() == null || monto.compareTo(pedido.getTotal()) != 0) {
             return "monto " + monto + " distinto del total " + pedido.getTotal();
         }
-        List<ReservaStock> reservas = reservaStockRepository.findByPedidoId(pedido.getId());
-        if (reservas.isEmpty() || reservas.stream().anyMatch(ReservaStock::isLiberada)) {
+        if (algunaReservaLiberada(reservaStockRepository.findByPedidoId(pedido.getId()))) {
             return "el stock reservado ya fue liberado";
         }
         return null;
@@ -398,11 +396,26 @@ public class PagoService {
     }
 
     private boolean dentroDeLaGracia(Pedido pedido) {
-        LocalDateTime vencimiento = reservaStockRepository.findByPedidoId(pedido.getId()).stream()
+        LocalDateTime vencimiento = vencimientoDelPedido(pedido, reservaStockRepository.findByPedidoId(pedido.getId()));
+        return LocalDateTime.now().isBefore(vencimiento.plusMinutes(GRACIA_SIN_CONCILIAR_MINUTOS));
+    }
+
+    // Los productos sin control de stock (caso Scott, controla_stock = false) no
+    // generan fila en reservas_stock. Un pedido puede tener entonces menos
+    // reservas que ítems, o ninguna: eso NO significa que haya vencido. Lo único
+    // que indica vencimiento es una reserva que ya se liberó.
+    private static boolean algunaReservaLiberada(List<ReservaStock> reservas) {
+        return reservas.stream().anyMatch(ReservaStock::isLiberada);
+    }
+
+    // Hasta cuándo se puede pagar: la reserva que vence primero. Si el pedido no
+    // tiene reservas (solo productos sin control de stock), se le da el mismo
+    // plazo contado desde su creación, para que tampoco quede abierto para siempre.
+    private static LocalDateTime vencimientoDelPedido(Pedido pedido, List<ReservaStock> reservas) {
+        return reservas.stream()
                 .map(ReservaStock::getExpiraEn)
                 .min(Comparator.naturalOrder())
                 .orElse(pedido.getCreadoEn().plusMinutes(InventarioService.TTL_RESERVA_MINUTOS));
-        return LocalDateTime.now().isBefore(vencimiento.plusMinutes(GRACIA_SIN_CONCILIAR_MINUTOS));
     }
 
     private Pago nuevoPago(Pedido pedido) {

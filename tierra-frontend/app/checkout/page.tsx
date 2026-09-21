@@ -20,19 +20,25 @@ export default function CheckoutPage() {
   const [datosEnvio, setDatosEnvio] = useState({ calle: "", codigoPostal: "", ciudad: "" });
   const [metodoEnvio, setMetodoEnvio] = useState<"domicilio" | "retiro">("domicilio");
 
-  // NOTA: este checkout asume un usuario y una dirección ya creados (usuarioId,
-  // direccionEnvioId) porque así está diseñado el backend hoy (CrearPedidoRequest
-  // los pide como UUID existentes). Falta un endpoint de "crear cuenta / dirección
-  // exprés durante el checkout" para que este formulario los genere en el paso 1 y 2
-  // en vez de simularlos — dejar ese endpoint como siguiente tarea del backend.
+  // ESTE CHECKOUT TODAVÍA NO FUNCIONA DE PUNTA A PUNTA, y es esperado.
+  //
+  // De quién es el pedido ya lo resuelve la sesión: el backend lo toma del
+  // usuario autenticado y por eso acá no se manda ningún usuarioId. Lo que
+  // falta es la dirección: CrearPedidoRequest pide el UUID de una dirección
+  // que ya exista, y todavía no hay forma de que el cliente dé de alta la
+  // suya. Eso es la libreta de direcciones, de la fase 2.
+  //
+  // Hasta entonces, el envío a domicilio falla con "Dirección de envío no
+  // encontrada". El retiro en el local sí funciona, siempre que haya sesión.
 
   async function confirmarCompra() {
     setCargando(true);
     setError(null);
     try {
       const pedido = await api.pedidos.crear({
-        usuarioId: "REEMPLAZAR-CON-USUARIO-LOGUEADO",
-        direccionEnvioId: "REEMPLAZAR-CON-DIRECCION-CREADA",
+        tipoEntrega: metodoEnvio === "domicilio" ? "ENVIO_DOMICILIO" : "RETIRO_LOCAL",
+        // TODO (fase 2): sale de la libreta de direcciones del usuario.
+        direccionEnvioId: metodoEnvio === "domicilio" ? "REEMPLAZAR-CON-DIRECCION-CREADA" : null,
         items: items.map((i) => ({ varianteId: i.varianteId, cantidad: i.cantidad }))
       });
 

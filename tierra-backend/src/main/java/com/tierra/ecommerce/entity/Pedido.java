@@ -1,6 +1,7 @@
 package com.tierra.ecommerce.entity;
 
 import com.tierra.ecommerce.enums.EstadoPedido;
+import com.tierra.ecommerce.enums.TipoEntrega;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,9 +28,12 @@ public class Pedido {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "direccion_envio_id")
-    private Direccion direccionEnvio;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_entrega", nullable = false)
+    private TipoEntrega tipoEntrega = TipoEntrega.ENVIO_DOMICILIO;
+
+    @Embedded
+    private DireccionEntrega direccionEntrega;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cupon_id")

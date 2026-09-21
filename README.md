@@ -183,7 +183,8 @@ El script inicial `02-seed-data.sql` precarga identificadores útiles para prueb
   * Cascos: `c0000000-0000-0000-0000-000000000007`
 * **Usuario y Dirección de prueba para pedidos**:
   * `usuarioId`: `99000000-0000-0000-0000-000000000001`
-  * `direccionEnvioId`: `88000000-0000-0000-0000-000000000001`
+  * `tipoEntrega`: `ENVIO_DOMICILIO` (o `RETIRO_LOCAL`)
+  * `direccionEnvioId`: `88000000-0000-0000-0000-000000000001` (requerido si es domicilio)
 
 ---
 

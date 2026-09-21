@@ -16,6 +16,7 @@ export interface VarianteProducto {
   talla: string | null;
   color: string | null;
   stock: number;
+  controlaStock?: boolean;
 }
 
 export interface ProductoDetalle {
@@ -30,20 +31,59 @@ export interface ProductoDetalle {
   imagenes: string[];
 }
 
+// --- Autenticación ---
+
+export type RolUsuario = "CLIENTE" | "ADMIN" | "OPERADOR";
+
+// Lo que devuelven /auth/registro, /auth/login y /auth/yo: siempre la misma
+// forma, así el frontend tiene un solo tipo de usuario.
+export interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: RolUsuario;
+}
+
+export interface RegistroRequest {
+  nombre: string;
+  email: string;
+  password: string;
+  telefono?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
 export interface ItemPedidoRequest {
   varianteId: string;
   cantidad: number;
 }
 
+export type TipoEntrega = "ENVIO_DOMICILIO" | "RETIRO_LOCAL";
+
+export interface DireccionEntrega {
+  calle: string;
+  numero?: string | null;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+}
+
 export interface CrearPedidoRequest {
-  usuarioId: string;
-  direccionEnvioId: string;
+  // Sin usuarioId: de quién es el pedido lo decide la sesión en el backend.
+  // Mandarlo desde acá no serviría de nada, el servidor lo ignora.
+  tipoEntrega: TipoEntrega;
+  direccionEnvioId?: string | null;
   codigoCupon?: string;
   items: ItemPedidoRequest[];
 }
 
 export interface PedidoResponse {
   id: string;
+  tipoEntrega: TipoEntrega;
+  direccionEntrega?: DireccionEntrega | null;
   estado: string;
   subtotal: number;
   descuento: number;

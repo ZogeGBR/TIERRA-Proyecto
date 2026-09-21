@@ -1,0 +1,15 @@
+{
+  "name": "tierra-proyecto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proyecto TIERRA - E-commerce y alquiler outdoor",
+  "scripts": {
+    "dev": "npm --prefix tierra-frontend run dev",
+    "build": "npm --prefix tierra-frontend run build",
+    "start": "npm --prefix tierra-frontend run start",
+    "lint": "npm --prefix tierra-frontend run lint",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  }
+}

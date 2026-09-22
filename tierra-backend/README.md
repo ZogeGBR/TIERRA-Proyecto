@@ -18,12 +18,16 @@ carrito), ajustar (alta de mercadería nueva) — todo pasa por ahí.
 1. `POST /api/pedidos` — crea el pedido y **reserva** stock por 20 minutos
    (`InventarioService.reservarStock`). No descuenta nada todavía.
 2. `POST /api/pagos/pedidos/{id}/preferencia` — genera el link de Mercado Pago.
-3. `POST /api/pagos/webhook` — cuando Mercado Pago confirma el pago,
-   `PagoService.confirmarPago` recién ahí descuenta stock de verdad
-   (`InventarioService.confirmarVenta`). Si el pago se rechaza, libera
-   la reserva sin tocar el stock.
-4. `ReservaStockLiberadorJob` corre cada minuto y libera reservas vencidas
-   de carritos abandonados que nunca llegaron a pagar.
+3. `POST /api/pagos/webhook` — valida la firma de Mercado Pago, consulta
+   el pago real a su API y recién ahí `PagoService.confirmarPago` descuenta
+   stock (`InventarioService.confirmarVenta`), solo si el monto coincide y
+   el pedido sigue pendiente. Si el pago se rechaza, el pedido sigue abierto
+   para reintentar con otra tarjeta.
+4. `ReservaStockLiberadorJob` corre cada minuto: antes de liberar un pedido
+   vencido consulta a Mercado Pago por si el webhook no llegó; si no hubo
+   pago aprobado, libera el stock, cancela el pedido y expira el pago.
+
+Detalle y motivos en `docs/decisiones/0004-conciliacion-pagos-mercado-pago.md`.
 
 ## Lo que este backend NO hace (a propósito)
 
@@ -45,8 +49,6 @@ se sacó por completo cuando se confirmó que no hacía falta.)
   `pom.xml` pero sin configurar (hoy deja todo abierto con `SecurityConfig`).
 - **Facturación electrónica** — ya emiten factura hoy con un sistema
   intermedio (no ARCA directo); falta identificar cuál e integrarlo.
-- **Verificación de firma del webhook de Mercado Pago** — pendiente en
-  `PagoController`.
 - **Costo de envío fijo** en `PedidoService` — el cliente cotiza los
   envíos al momento, no hay tarifa fija ni por zona todavía; falta
   reemplazar el placeholder por el criterio real.

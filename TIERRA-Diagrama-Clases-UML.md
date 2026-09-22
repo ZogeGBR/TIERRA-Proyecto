@@ -76,6 +76,7 @@ classDiagram
         APROBADO
         RECHAZADO
         REEMBOLSADO
+        EXPIRADO
     }
 
     class EstadoEnvio {

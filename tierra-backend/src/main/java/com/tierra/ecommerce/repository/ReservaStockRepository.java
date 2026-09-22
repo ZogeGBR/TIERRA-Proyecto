@@ -14,4 +14,14 @@ public interface ReservaStockRepository extends JpaRepository<ReservaStock, UUID
 
     @Query("SELECT r FROM ReservaStock r WHERE r.liberada = false AND r.expiraEn < :ahora")
     List<ReservaStock> findVencidasNoLiberadas(LocalDateTime ahora);
+
+    // Pedidos con al menos una reserva vencida sin liberar: el job los resuelve
+    // de a uno (conciliar con Mercado Pago antes de soltar el stock).
+    @Query("SELECT DISTINCT r.pedido.id FROM ReservaStock r " +
+           "WHERE r.liberada = false AND r.expiraEn < :ahora AND r.pedido IS NOT NULL")
+    List<UUID> findPedidosConReservasVencidas(LocalDateTime ahora);
+
+    @Query("SELECT r FROM ReservaStock r " +
+           "WHERE r.liberada = false AND r.expiraEn < :ahora AND r.pedido IS NULL")
+    List<ReservaStock> findVencidasNoLiberadasSinPedido(LocalDateTime ahora);
 }

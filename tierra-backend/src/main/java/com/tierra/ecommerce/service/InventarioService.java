@@ -20,7 +20,7 @@ import java.util.UUID;
 @Service
 public class InventarioService {
 
-    private static final int TTL_RESERVA_MINUTOS = 20;
+    public static final int TTL_RESERVA_MINUTOS = 20;
 
     private final VarianteProductoRepository varianteRepository;
     private final ReservaStockRepository reservaStockRepository;

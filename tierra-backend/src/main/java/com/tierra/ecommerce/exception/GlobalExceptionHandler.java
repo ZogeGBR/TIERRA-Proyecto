@@ -34,6 +34,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(PagoNoPermitidoException.class)
+    public ResponseEntity<ErrorResponse> handlePagoNoPermitido(PagoNoPermitidoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+    }
+
     @ExceptionHandler(EquipoNoDisponibleException.class)
     public ResponseEntity<ErrorResponse> handleEquipoNoDisponible(EquipoNoDisponibleException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));

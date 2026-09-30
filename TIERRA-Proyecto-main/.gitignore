@@ -1,0 +1,32 @@
+# --- Compilados y dependencias ---
+target/
+build/
+out/
+node_modules/
+.next/
+*.class
+*.jar
+
+# --- Entorno y secretos (NUNCA se suben) ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+*.log
+npm-debug.log*

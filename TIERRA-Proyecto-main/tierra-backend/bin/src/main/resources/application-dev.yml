@@ -1,0 +1,9 @@
+# Perfil de desarrollo local. Se activa con SPRING_PROFILES_ACTIVE=dev
+# (definido en el .env de la raíz del repo, que lee el launch.json de VS Code).
+#
+# Lo único que cambia respecto del default es que Flyway también mira
+# db/dev, donde vive el seed de datos de prueba. Sin este perfil la base
+# queda con el esquema creado pero sin datos.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev

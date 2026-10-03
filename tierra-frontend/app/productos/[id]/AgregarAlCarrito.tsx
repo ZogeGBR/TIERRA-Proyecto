@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import type { ProductoDetalle } from "@/lib/types";
+
+export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
+  const { agregarItem } = useCart();
+  const router = useRouter();
+  const [varianteId, setVarianteId] = useState(producto.variantes[0]?.id ?? "");
+  const [cantidad, setCantidad] = useState(1);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+
+  const variante = producto.variantes.find((v) => v.id === varianteId);
+
+  function handleAgregar() {
+    if (!variante) return;
+    const controla = variante.controlaStock !== false;
+    if (controla && variante.stock < cantidad) {
+      setMensaje(`Solo quedan ${variante.stock} unidades de esta variante.`);
+      return;
+    }
+
+    agregarItem({
+      varianteId: variante.id,
+      productoId: producto.id,
+      nombreProducto: producto.nombre,
+      talla: variante.talla,
+      color: variante.color,
+      precioUnitario: producto.precio,
+      cantidad,
+      imagen: producto.imagenes[0] ?? null
+    });
+
+    setMensaje("Agregado al carrito.");
+  }
+
+  if (producto.variantes.length === 0) {
+    return <p className="mt-6 text-tierra-terracota-oscuro/60">Sin variantes disponibles por ahora.</p>;
+  }
+
+  return (
+    <div className="mt-6">
+      <label className="block text-sm font-medium text-tierra-terracota-oscuro mb-1">Talla / color</label>
+      <select
+        value={varianteId}
+        onChange={(e) => setVarianteId(e.target.value)}
+        className="border border-tierra-crema-oscuro rounded px-3 py-2 w-full transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
+      >
+        {producto.variantes.map((v) => {
+          const sinStock = v.controlaStock !== false && v.stock === 0;
+          return (
+            <option key={v.id} value={v.id} disabled={sinStock}>
+              {[v.talla, v.color].filter(Boolean).join(" / ") || v.sku} {sinStock ? "(sin stock)" : ""}
+            </option>
+          );
+        })}
+      </select>
+
+      <div className="mt-4 flex items-center gap-3">
+        <input
+          type="number"
+          min={1}
+          max={variante?.controlaStock === false ? 99 : (variante?.stock ?? 1)}
+          value={cantidad}
+          onChange={(e) => setCantidad(Number(e.target.value))}
+          className="border border-tierra-crema-oscuro rounded px-3 py-2 w-20 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
+        />
+        <button
+          onClick={handleAgregar}
+          className="btn-primario flex-1"
+        >
+          Agregar al carrito
+        </button>
+      </div>
+
+      {mensaje && <p className="mt-2 text-sm text-tierra-terracota-oscuro">{mensaje}</p>}
+
+      <button
+        onClick={() => router.push("/carrito")}
+        className="btn-secundario w-full mt-3"
+      >
+        <ShoppingCart size={16} />
+        Ir al carrito
+      </button>
+    </div>
+  );
+}

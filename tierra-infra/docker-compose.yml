@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tierra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tierra
+      POSTGRES_USER: tierra_app
+      POSTGRES_PASSWORD: tierra_dev_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - tierra_pg_data:/var/lib/postgresql/data
+
+volumes:
+  tierra_pg_data:

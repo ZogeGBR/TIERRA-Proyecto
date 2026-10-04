@@ -212,9 +212,11 @@ No hace falta que cada commit deje la aplicación funcionando — para eso está
 
 El orden importa: **base de datos → backend → frontend**.
 
-> **Hay dos `docker-compose.yml` y hacen cosas distintas.** El de `tierra-infra/` levanta **sólo PostgreSQL**, y es el que se usa para desarrollar con el backend y el frontend corriendo en tu máquina — es el que describe esta sección. El de la raíz levanta **todo el stack en contenedores** (base, backend y frontend), y sirve para probar el conjunto o mostrarlo funcionando sin instalar nada.
+> **Hay dos `docker-compose.yml`.** El de `tierra-infra/` levanta **sólo PostgreSQL** y es el que se usa para desarrollar: el backend y el frontend corren en tu máquina, con recarga en caliente y depurador. Es el que describe esta sección.
 >
-> Los dos declaran un contenedor llamado `tierra-postgres` y usan el puerto 5432, así que **no pueden correr a la vez**. Y como `docker compose` busca el archivo subiendo por las carpetas padre, ejecutarlo desde una subcarpeta del repo puede agarrar el de la raíz sin que te des cuenta. Si te aparece un error de nombre de contenedor en uso, es esto: pará el otro con `docker compose down` desde la carpeta que corresponda.
+> El de `tierra-infra/stack/` levanta **todo el stack en contenedores** y sirve para mostrar el sistema andando en una máquina sin Java ni Node. No se usa para desarrollar, y **no puede correr a la vez** que el otro porque comparten los puertos 5432, 8080 y 3000. Ver `tierra-infra/stack/README.md`.
+>
+> Vive en una subcarpeta a propósito: `docker compose` busca el archivo subiendo por las carpetas padre, así que cuando estaba en la raíz, ejecutarlo desde cualquier subcarpeta lo encontraba a él y construía todo el stack sin que nadie se lo pidiera.
 
 ### 6.1 — Base de datos
 

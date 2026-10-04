@@ -37,7 +37,15 @@ server:
         # Primera capa contra CSRF: el navegador no manda la cookie en
         # peticiones que vengan de otro sitio. La segunda es el token (ver
         # SecurityConfig).
-        same-site: lax
+        #
+        # Va en variable de entorno porque depende de dónde se despliegue:
+        # 'lax' sirve mientras el frontend y el backend queden en el mismo
+        # sitio (tierra.com.ar y api.tierra.com.ar, por ejemplo). Si el
+        # backend termina en otro dominio, el navegador deja de mandar la
+        # cookie en los POST y el login se rompe SIN ningún error que lo
+        # explique; ahí hay que poner 'none' (que exige secure: true) y la
+        # protección queda sólo en el token CSRF.
+        same-site: ${SESSION_COOKIE_SAME_SITE:lax}
         # En producción va en true: la cookie viaja sólo por HTTPS. En
         # desarrollo tiene que ser false porque localhost es HTTP.
         secure: ${SESSION_COOKIE_SECURE:false}

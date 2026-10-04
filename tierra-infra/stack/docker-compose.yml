@@ -1,7 +1,26 @@
+# Stack completo en contenedores: base + backend + frontend.
+#
+# NO es para desarrollar. Para eso está tierra-infra/docker-compose.yml, que
+# levanta sólo PostgreSQL y deja que backend y frontend corran en tu máquina.
+#
+# Esto sirve para mostrar el sistema funcionando en una máquina que no tiene
+# Java ni Node instalados: una demo al cliente, o alguien que recién se suma.
+#
+# IMPORTANTE: usa los puertos 5432, 8080 y 3000, los mismos del entorno de
+# desarrollo. NO pueden correr los dos a la vez. Bajá el de desarrollo antes:
+#
+#     cd tierra-infra && docker compose down
+#     cd stack && docker compose up -d --build
+#
+# Los nombres de contenedor llevan el sufijo -stack para que, si te olvidás,
+# el error diga "puerto ocupado" y no algo confuso sobre nombres repetidos.
+
+name: tierra-stack
+
 services:
   postgres:
     image: postgres:16
-    container_name: tierra-postgres
+    container_name: tierra-postgres-stack
     restart: unless-stopped
     environment:
       POSTGRES_DB: tierra
@@ -19,13 +38,16 @@ services:
 
   backend:
     build:
-      context: ./tierra-backend
-    container_name: tierra-backend
+      context: ../../tierra-backend
+    container_name: tierra-backend-stack
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
+      # Sin esto la base queda con el esquema creado pero sin datos, y la
+      # demo mostraría un catálogo vacío.
+      SPRING_PROFILES_ACTIVE: dev
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USUARIO: tierra_app
@@ -33,16 +55,19 @@ services:
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-TEST-0000000000000000-000000-00000000000000000000000000000000-000000000}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       MP_PRODUCCION: ${MP_PRODUCCION:-false}
+      CORS_ORIGENES: http://localhost:3000
+      SESSION_COOKIE_SECURE: "false"
+      SESSION_COOKIE_SAME_SITE: lax
       JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
     ports:
       - "8080:8080"
 
   frontend:
     build:
-      context: ./tierra-frontend
+      context: ../../tierra-frontend
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8080/api
-    container_name: tierra-frontend
+    container_name: tierra-frontend-stack
     restart: unless-stopped
     depends_on:
       - backend

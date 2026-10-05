@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>TIERRA — Guía de ramas, protecciones y commits</title>
+<meta name="description" content="Manejo de ramas para desarrolladores y agentes del proyecto TIERRA: protección de ramas, PR, CI, CODEOWNERS, hotfix, tags y prefijos.">
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 15mm 17mm 15mm;
+    @bottom-left   { content: "TIERRA · Guía de ramas y commits"; font: 8pt 'Segoe UI', sans-serif; color: #8a7f72; }
+    @bottom-right  { content: "Página " counter(page) " de " counter(pages); font: 8pt 'Segoe UI', sans-serif; color: #8a7f72; }
+  }
+  @page :first { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  :root {
+    --tierra: #6b4423;
+    --tierra-dark: #3e2714;
+    --musgo: #4a6741;
+    --arena: #f6f0e6;
+    --arena-2: #ebe1cf;
+    --tinta: #2b2620;
+    --gris: #6e655a;
+    --rojo: #a63d2f;
+    --ambar: #b7791f;
+    --azul: #2f5d7c;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: var(--tinta); font-size: 9.4pt; line-height: 1.42; margin: 0; }
+
+  /* ---------- Portada ---------- */
+  .portada {
+    height: 297mm; padding: 30mm 22mm 22mm; color: #fff; page-break-after: always;
+    background:
+      radial-gradient(circle at 85% 12%, rgba(255,255,255,.10) 0, transparent 38%),
+      linear-gradient(160deg, var(--tierra-dark) 0%, var(--tierra) 58%, var(--musgo) 130%);
+    position: relative;
+  }
+  .portada .marca { letter-spacing: .5em; font-size: 11pt; font-weight: 600; opacity: .85; }
+  .portada h1 { font-size: 36pt; line-height: 1.1; margin: 55mm 0 8mm; font-weight: 700; border: 0; padding: 0; color: #fff; }
+  .portada .sub { font-size: 14pt; max-width: 140mm; opacity: .92; font-weight: 300; }
+  .portada .chips { margin-top: 14mm; }
+  .portada .chip { display: inline-block; border: 1px solid rgba(255,255,255,.45); border-radius: 20px; padding: 3px 12px; margin: 0 6px 6px 0; font-size: 9pt; }
+  .portada .pie { position: absolute; left: 22mm; right: 22mm; bottom: 20mm; font-size: 9pt; opacity: .8; border-top: 1px solid rgba(255,255,255,.35); padding-top: 4mm; }
+
+  /* ---------- Tipografía ---------- */
+  h1 { font-size: 18pt; color: var(--tierra-dark); margin: 0 0 3mm; padding-bottom: 2mm; border-bottom: 3px solid var(--tierra); page-break-after: avoid; }
+  h2 { font-size: 13pt; color: var(--tierra); margin: 5mm 0 1.5mm; page-break-after: avoid; }
+  h3 { font-size: 10.5pt; color: var(--musgo); margin: 4mm 0 1mm; page-break-after: avoid; }
+  p { margin: 0 0 2mm; }
+  ul, ol { margin: 0 0 2.5mm; padding-left: 6mm; }
+  li { margin-bottom: .6mm; }
+  .seccion { page-break-before: always; }
+  .seccion:first-of-type { page-break-before: auto; }
+  code { font-family: 'Cascadia Mono', Consolas, monospace; background: var(--arena); padding: 0 3px; border-radius: 3px; font-size: 9pt; color: var(--tierra-dark); }
+  pre { font-family: 'Cascadia Mono', Consolas, monospace; background: #2a2118; color: #f3e9d8; padding: 2.5mm 4mm; border-radius: 5px; font-size: 8.2pt; line-height: 1.4; overflow: hidden; page-break-inside: avoid; margin: 0 0 3mm; white-space: pre-wrap; }
+  pre .c { color: #a89883; }
+  pre .k { color: #e3b567; }
+
+  /* ---------- Tablas ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 0 0 3mm; font-size: 8.7pt; page-break-inside: avoid; }
+  th { background: var(--tierra); color: #fff; text-align: left; padding: 1.5mm 2.5mm; font-weight: 600; }
+  td { padding: 1.2mm 2.5mm; border-bottom: 1px solid var(--arena-2); vertical-align: top; }
+  tr:nth-child(even) td { background: #fbf8f2; }
+  td.centro, th.centro { text-align: center; }
+  .si { color: var(--musgo); font-weight: 700; }
+  .no { color: var(--rojo); font-weight: 700; }
+
+  /* ---------- Cajas ---------- */
+  .caja { border-left: 4px solid var(--azul); background: #eef4f8; padding: 2mm 4mm; margin: 0 0 3mm; border-radius: 0 5px 5px 0; page-break-inside: avoid; }
+  .caja strong.t { display: block; font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1mm; color: var(--azul); }
+  .caja.alerta { border-color: var(--rojo); background: #faeeec; } .caja.alerta strong.t { color: var(--rojo); }
+  .caja.aviso  { border-color: var(--ambar); background: #fbf3e2; } .caja.aviso strong.t { color: var(--ambar); }
+  .caja.ok     { border-color: var(--musgo); background: #edf3ea; } .caja.ok strong.t { color: var(--musgo); }
+  .caja p:last-child, .caja ul:last-child { margin-bottom: 0; }
+
+  /* ---------- Pasos ---------- */
+  .pasos { counter-reset: paso; list-style: none; padding: 0; margin: 0 0 4mm; }
+  .pasos > li { counter-increment: paso; position: relative; padding: 0 0 0 11mm; margin-bottom: 2.2mm; page-break-inside: avoid; }
+  .pasos > li::before { content: counter(paso); position: absolute; left: 0; top: 0; width: 7mm; height: 7mm; border-radius: 50%; background: var(--tierra); color: #fff; font-weight: 700; text-align: center; line-height: 7mm; font-size: 9.5pt; }
+  .pasos > li strong:first-child { color: var(--tierra-dark); }
+  .pasos pre { margin: 1.5mm 0 0; }
+
+  /* ---------- Diagramas ---------- */
+  .diagrama { background: var(--arena); border: 1px solid var(--arena-2); border-radius: 6px; padding: 2mm; margin: 0 0 3mm; text-align: center; page-break-inside: avoid; }
+  .diagrama svg { max-width: 100%; max-height: 62mm; height: auto; }
+  .dos-col { display: flex; gap: 5mm; } .dos-col > div { flex: 1; }
+  .tarjeta { border: 1px solid var(--arena-2); border-top: 4px solid var(--tierra); border-radius: 5px; padding: 2mm 4mm; background: #fff; page-break-inside: avoid; }
+  .tarjeta.verde { border-top-color: var(--musgo); } .tarjeta.roja { border-top-color: var(--rojo); }
+  .tarjeta h3 { margin-top: 0; }
+  .tag { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: 8pt; font-weight: 700; color: #fff; background: var(--tierra); }
+  .tag.v { background: var(--musgo); } .tag.r { background: var(--rojo); } .tag.a { background: var(--ambar); } .tag.z { background: var(--azul); }
+</style>
+</head>
+<body>
+
+<!-- ======================= PORTADA ======================= -->
+<section class="portada">
+  <div class="marca">TIERRA</div>
+  <h1>Guía de ramas,<br>protecciones y commits</h1>
+  <p class="sub">Cómo se trabaja con git en el repositorio, para desarrolladores y para los agentes que los asisten: qué está protegido, qué pasos seguir y cómo nombrar ramas y commits.</p>
+  <div class="chips">
+    <span class="chip">Pull Request obligatorio</span>
+    <span class="chip">1 aprobación del delegado</span>
+    <span class="chip">CI en verde</span>
+    <span class="chip">Sin push directo</span>
+    <span class="chip">CODEOWNERS</span>
+    <span class="chip">Hotfix</span>
+    <span class="chip">Tags</span>
+  </div>
+  <div class="pie">Repositorio: ZogeGBR/TIERRA-Proyecto · Documento de referencia derivado de CONTRIBUTING.md §4 y §5 · Si hay diferencias, manda CONTRIBUTING.md</div>
+</section>
+
+<!-- ======================= 1. RESUMEN ======================= -->
+<section class="seccion">
+<h1>1. Resumen en una página</h1>
+
+<div class="dos-col">
+  <div class="tarjeta">
+    <h3>Las 7 reglas</h3>
+    <ol>
+      <li><strong>Una rama por tarea.</strong> Nunca se trabaja sobre <code>main</code> ni <code>develop</code>.</li>
+      <li><strong>Prohibido el push directo</strong> a <code>main</code> y <code>develop</code>. Todo entra por Pull Request.</li>
+      <li><strong>1 aprobación</strong> del delegado (code owner) del área que se toca.</li>
+      <li><strong>La CI tiene que pasar</strong> en verde para poder mergear.</li>
+      <li>Las ramas nacen de <code>develop</code>. Solo <code>hotfix/</code> nace de <code>main</code>.</li>
+      <li>El PR apunta a <code>develop</code>, salvo release y hotfix (van a <code>main</code>).</li>
+      <li>Cada versión en <code>main</code> lleva un <strong>tag</strong> <code>vX.Y.Z</code>.</li>
+    </ol>
+  </div>
+  <div class="tarjeta verde">
+    <h3>Prefijos válidos</h3>
+    <p><strong>Ramas</strong> <code>&lt;prefijo&gt;/&lt;área&gt;-&lt;descripción&gt;</code></p>
+    <p><span class="tag">feat/</span> <span class="tag">fix/</span> <span class="tag">chore/</span> <span class="tag">docs/</span> <span class="tag">test/</span> <span class="tag">refactor/</span> <span class="tag r">hotfix/</span></p>
+    <p style="margin-top:3mm"><strong>Commits</strong> <code>tipo: descripción</code></p>
+    <p><span class="tag v">feat</span> <span class="tag v">fix</span> <span class="tag v">chore</span> <span class="tag v">docs</span> <span class="tag v">test</span> <span class="tag v">refactor</span> <span class="tag a">release</span></p>
+    <p style="margin-top:3mm"><strong>Áreas</strong> <code>back-</code> · <code>front-</code> · <em>sin área</em> si toca ambas, infra o docs.</p>
+    <p><strong>Ejemplo completo:</strong><br><code>feat/back-registro-usuario</code><br><code>feat: endpoint de registro de usuario</code></p>
+  </div>
+</div>
+
+<h2>Flujo normal, de punta a punta</h2>
+<div class="diagrama">
+<svg viewBox="0 0 760 120" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="12">
+  <defs><marker id="f" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b4423"/></marker></defs>
+  <g fill="#fff" stroke="#6b4423" stroke-width="1.5">
+    <rect x="5" y="35" width="105" height="50" rx="8"/><rect x="140" y="35" width="105" height="50" rx="8"/>
+    <rect x="275" y="35" width="105" height="50" rx="8"/><rect x="410" y="35" width="105" height="50" rx="8"/>
+    <rect x="545" y="35" width="105" height="50" rx="8" fill="#edf3ea" stroke="#4a6741"/>
+    <rect x="680" y="35" width="75" height="50" rx="8" fill="#3e2714" stroke="#3e2714"/>
+  </g>
+  <g fill="#2b2620" text-anchor="middle">
+    <text x="57" y="57" font-weight="700">develop</text><text x="57" y="73" font-size="10">actualizada</text>
+    <text x="192" y="57" font-weight="700">Rama de tarea</text><text x="192" y="73" font-size="10">feat/back-…</text>
+    <text x="327" y="57" font-weight="700">Commits</text><text x="327" y="73" font-size="10">tipo: descripción</text>
+    <text x="462" y="57" font-weight="700">Pull Request</text><text x="462" y="73" font-size="10">base: develop</text>
+    <text x="597" y="57" font-weight="700">CI + 1 aprob.</text><text x="597" y="73" font-size="10">del delegado</text>
+  </g>
+  <text x="717" y="57" fill="#fff" text-anchor="middle" font-weight="700">Squash</text><text x="717" y="73" fill="#fff" text-anchor="middle" font-size="10">and merge</text>
+  <g stroke="#6b4423" stroke-width="1.5" marker-end="url(#f)">
+    <line x1="110" y1="60" x2="138" y2="60"/><line x1="245" y1="60" x2="273" y2="60"/><line x1="380" y1="60" x2="408" y2="60"/>
+    <line x1="515" y1="60" x2="543" y2="60"/><line x1="650" y1="60" x2="678" y2="60"/>
+  </g>
+</svg>
+</div>
+
+<div class="caja alerta">
+  <strong class="t">Si algo te lo impide, no lo rodees</strong>
+  <p>Si GitHub rechaza un push, bloquea un merge o la CI falla, <strong>se arregla la causa</strong>. No se fuerza, no se usa <code>--no-verify</code>, no se pide a un administrador que saltee la protección. Las protecciones existen para que cuatro personas (y sus agentes) trabajen en paralelo sin pisarse.</p>
+</div>
+</section>
+
+<!-- ======================= 2. MAPA DE RAMAS ======================= -->
+<section class="seccion">
+<h1>2. Mapa de ramas</h1>
+<p>Hay solo <strong>dos ramas permanentes</strong>. Todo lo demás es temporal y se borra al mergear.</p>
+
+<div class="diagrama">
+<svg viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="12">
+  <text x="10" y="42" font-weight="700" fill="#3e2714">main</text>
+  <text x="10" y="132" font-weight="700" fill="#3e2714">develop</text>
+  <text x="10" y="232" font-weight="700" fill="#a63d2f">hotfix/</text>
+  <line x1="75" y1="38" x2="750" y2="38" stroke="#3e2714" stroke-width="4"/>
+  <line x1="75" y1="128" x2="750" y2="128" stroke="#6b4423" stroke-width="4"/>
+  <!-- tareas -->
+  <path d="M130 128 C150 128 150 82 180 82 L240 82 C265 82 265 128 285 128" fill="none" stroke="#4a6741" stroke-width="3"/>
+  <path d="M330 128 C350 128 350 82 380 82 L440 82 C465 82 465 128 485 128" fill="none" stroke="#4a6741" stroke-width="3"/>
+  <text x="212" y="74" text-anchor="middle" font-size="11" fill="#4a6741">feat/back-…</text>
+  <text x="412" y="74" text-anchor="middle" font-size="11" fill="#4a6741">fix/front-…</text>
+  <!-- release -->
+  <path d="M560 128 C590 128 590 38 620 38" fill="none" stroke="#b7791f" stroke-width="3" stroke-dasharray="5 4"/>
+  <text x="640" y="30" font-size="11" fill="#b7791f" font-weight="700">release → v1.1.0</text>
+  <!-- hotfix -->
+  <path d="M250 38 C270 38 270 215 300 215 L360 215 C395 215 395 38 415 38" fill="none" stroke="#a63d2f" stroke-width="3"/>
+  <path d="M360 215 C395 215 400 128 430 128" fill="none" stroke="#a63d2f" stroke-width="3" stroke-dasharray="5 4"/>
+  <text x="330" y="236" text-anchor="middle" font-size="11" fill="#a63d2f">hotfix/back-… → v1.0.1</text>
+  <text x="452" y="196" font-size="10" fill="#a63d2f">el arreglo también baja a develop</text>
+  <g fill="#3e2714"><circle cx="100" cy="38" r="6"/><circle cx="250" cy="38" r="6"/><circle cx="415" cy="38" r="6"/><circle cx="620" cy="38" r="7" fill="#b7791f"/></g>
+  <g fill="#6b4423"><circle cx="100" cy="128" r="6"/><circle cx="130" cy="128" r="5"/><circle cx="285" cy="128" r="5"/><circle cx="330" cy="128" r="5"/><circle cx="485" cy="128" r="5"/><circle cx="560" cy="128" r="5"/></g>
+  <text x="100" y="22" text-anchor="middle" font-size="10" fill="#6e655a">v1.0.0</text>
+  <text x="415" y="22" text-anchor="middle" font-size="10" fill="#6e655a">v1.0.1</text>
+</svg>
+</div>
+
+<table>
+  <tr><th>Rama</th><th>Tipo</th><th>Qué contiene</th><th>Cómo entra código</th></tr>
+  <tr><td><code>main</code></td><td>Permanente</td><td>Lo que corre en producción. Cada merge lleva un tag de versión.</td><td>PR desde <code>develop</code> (release) o desde <code>hotfix/</code></td></tr>
+  <tr><td><code>develop</code></td><td>Permanente</td><td>Integración: todo lo terminado y revisado, listo para el próximo release.</td><td>PR desde las ramas de tarea</td></tr>
+  <tr><td><code>feat/ fix/ chore/ …</code></td><td>Temporal</td><td>Una sola tarea.</td><td>Se crean desde <code>develop</code></td></tr>
+  <tr><td><code>hotfix/</code></td><td>Temporal</td><td>Un arreglo urgente en producción.</td><td>Se crea desde <code>main</code></td></tr>
+</table>
+
+<div class="caja">
+  <strong class="t">No hay ramas back ni front</strong>
+  <p>El repo es un monorepo y muchas funcionalidades tocan las dos partes. El área se identifica por el nombre de la rama y la revisión la reparte <code>CODEOWNERS</code> (§6).</p>
+</div>
+</section>
+
+<!-- ======================= 3. PREFIJOS ======================= -->
+<section class="seccion">
+<h1>3. Prefijos de ramas y de commits</h1>
+
+<h2>3.1 Ramas</h2>
+<p>Formato: <code>&lt;prefijo&gt;/&lt;área&gt;-&lt;descripción&gt;</code></p>
+<table>
+  <tr><th style="width:20%">Prefijo</th><th>Para qué</th><th style="width:38%">Ejemplo</th></tr>
+  <tr><td><code>feat/</code></td><td>Funcionalidad nueva</td><td><code>feat/back-registro-usuario</code></td></tr>
+  <tr><td><code>fix/</code></td><td>Corrección de un bug (no urgente)</td><td><code>fix/back-webhook-idempotencia</code></td></tr>
+  <tr><td><code>chore/</code></td><td>Configuración, build, dependencias</td><td><code>chore/flyway-migraciones</code></td></tr>
+  <tr><td><code>docs/</code></td><td>Documentación</td><td><code>docs/decisiones-arquitectura</code></td></tr>
+  <tr><td><code>test/</code></td><td>Tests</td><td><code>test/back-inventario-service</code></td></tr>
+  <tr><td><code>refactor/</code></td><td>Reordenar código sin cambiar lo que hace</td><td><code>refactor/front-carrito</code></td></tr>
+  <tr><td><code>hotfix/</code></td><td>Arreglo <strong>urgente en producción</strong> (§7)</td><td><code>hotfix/back-webhook-mp</code></td></tr>
+</table>
+
+<h3>El área</h3>
+<table style="margin-bottom:1.5mm">
+  <tr><th>La tarea toca</th><th>Área</th><th>Ejemplo</th></tr>
+  <tr><td>Solo <code>tierra-backend/</code></td><td><code>back-</code></td><td><code>feat/back-registro-usuario</code></td></tr>
+  <tr><td>Solo <code>tierra-frontend/</code></td><td><code>front-</code></td><td><code>feat/front-tema-oscuro</code></td></tr>
+  <tr><td>Las dos, infra o docs</td><td><em>(sin área)</em></td><td><code>feat/login</code>, <code>chore/flyway-migraciones</code></td></tr>
+</table>
+<p style="font-size:8.4pt;margin-bottom:2mm">Opcional: ID de tablero tras el área (<code>feat/back-H2-registro-usuario</code>). Reglas: minúsculas, guiones, sin espacios ni tildes.</p>
+
+<h2>3.2 Commits</h2>
+<p>Formato: <code>tipo: descripción en presente, en minúscula</code></p>
+<table style="margin-bottom:1.5mm">
+  <tr><th style="width:14%">Tipo</th><th style="width:36%">Cuándo</th><th>Ejemplo</th></tr>
+  <tr><td><code>feat</code></td><td>Funcionalidad nueva</td><td><code>feat: agregar endpoint GET /api/categorias</code></td></tr>
+  <tr><td><code>fix</code></td><td>Corrección de un bug</td><td><code>fix: incrementar usos_actuales al aplicar un cupon</code></td></tr>
+  <tr><td><code>chore</code></td><td>Configuración, dependencias, build</td><td><code>chore: actualizar dependencia de flyway</code></td></tr>
+  <tr><td><code>docs</code></td><td>Documentación</td><td><code>docs: documentar el flujo de consulta de alquiler</code></td></tr>
+  <tr><td><code>test</code></td><td>Tests</td><td><code>test: cubrir liberacion de reservas vencidas</code></td></tr>
+  <tr><td><code>refactor</code></td><td>Reordenar sin cambiar comportamiento</td><td><code>refactor: extraer el calculo de descuento a un metodo propio</code></td></tr>
+  <tr><td><code>release</code></td><td>Título del PR <code>develop → main</code></td><td><code>release: v1.1.0</code></td></tr>
+</table>
+<ul style="margin-bottom:0">
+  <li>El prefijo del commit coincide con el de la rama (<code>feat/…</code> → <code>feat:</code>). Un <code>hotfix/</code> usa <code>fix:</code>.</li>
+  <li>Un commit se explica en <strong>una línea</strong>. Si necesitás una "y", probablemente son dos commits.</li>
+  <li>El <strong>título del PR</strong> sigue este formato: con <em>Squash and merge</em> pasa a ser el commit en <code>develop</code>.</li>
+  <li>No hace falta que cada commit deje la app andando (para eso está la rama), pero sí lo que llega a <code>develop</code> y <code>main</code>.</li>
+</ul>
+</section>
+
+<!-- ======================= 4. FLUJO ======================= -->
+<section class="seccion">
+<h1>4. Pasos al trabajar en una tarea</h1>
+
+<div class="dos-col" style="gap:4.5mm;align-items:flex-start">
+  <div style="flex:1.25">
+    <ol class="pasos" style="margin-bottom:0">
+      <li><strong>Actualizá <code>develop</code> y partí de ahí.</strong>
+<pre>git switch develop
+git pull</pre></li>
+      <li><strong>Creá la rama de la tarea</strong> (§3).
+<pre>git switch -c feat/back-registro-usuario</pre></li>
+      <li><strong>Verificá la rama antes de editar.</strong>
+<pre>git branch --show-current</pre></li>
+      <li><strong>Trabajá y commiteá</strong> (formato §3).
+<pre>git add &lt;archivos&gt;
+git commit -m "feat: registro de usuario"</pre></li>
+      <li><strong>Traé lo último de <code>develop</code>.</strong>
+<pre>git pull --rebase origin develop</pre></li>
+      <li><strong>Subí la rama.</strong>
+<pre>git push -u origin feat/back-registro-usuario</pre></li>
+      <li><strong>Abrí el PR hacia <code>develop</code>.</strong> Base: <code>develop</code>. Título con formato; describí qué cambia y cómo probarlo.</li>
+      <li><strong>Esperá CI en verde y aprobación del delegado.</strong> Resolvé comentarios. Commits nuevos descartan la aprobación.</li>
+      <li><strong>Squash and merge.</strong> Luego actualizá tu <code>develop</code> local:
+<pre>git switch develop
+git pull</pre></li>
+    </ol>
+  </div>
+  <div style="flex:0.95">
+    <div class="caja aviso" style="margin-bottom:2.5mm">
+      <strong class="t">El PR apunta a develop, no a main</strong>
+      <p>Un PR de tarea contra <code>main</code> salta la integración. Solo release y hotfix van a <code>main</code>.</p>
+    </div>
+    <div class="caja" style="margin-bottom:2.5mm">
+      <strong class="t">Dos comandos que salvan el día</strong>
+      <ul style="padding-left:4mm;margin:0">
+        <li><strong>Editaste sin rama:</strong> <code>git switch -c feat/xxx</code> se lleva los cambios.</li>
+        <li><strong>Cambiar de rama a medias:</strong> <code>git stash</code> y <code>git stash pop</code>.</li>
+      </ul>
+    </div>
+    <div class="tarjeta" style="border-top-color:var(--musgo);padding:2.5mm 3.5mm">
+      <h3 style="margin-top:0;margin-bottom:1.5mm">Checklist antes de abrir el PR</h3>
+      <ul style="list-style:none;padding-left:0;margin:0;font-size:8.3pt;line-height:1.45">
+        <li>☐ Backend compila y arranca (<code>.\mvnw spring-boot:run</code>)</li>
+        <li>☐ Frontend compila (<code>npm run build</code>)</li>
+        <li>☐ <code>git status</code> limpio de archivos no deseados</li>
+        <li>☐ Sin credenciales, tokens ni rutas locales en diff</li>
+        <li>☐ Flyway: migración nueva y entidades actualizadas</li>
+        <li>☐ Rebase con <code>develop</code> sin conflictos</li>
+        <li>☐ PR apunta a <code>develop</code> (o <code>main</code> si release/hotfix)</li>
+        <li>☐ Rama y PR siguen los prefijos de la §3</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ======================= 5. PROTECCIÓN ======================= -->
+<section class="seccion">
+<h1>5. Protección de ramas</h1>
+<p>Se configura una sola vez en GitHub (<em>Settings → Branches</em>, o como <em>Ruleset</em>) y lo hace quien administra el repositorio. Se aplica igual a <code>main</code> y a <code>develop</code>.</p>
+
+<table>
+  <tr><th>Ajuste</th><th class="centro" style="width:14%"><code>main</code></th><th class="centro" style="width:14%"><code>develop</code></th><th>Qué consigue</th></tr>
+  <tr><td>Require a pull request before merging</td><td class="centro si">✔</td><td class="centro si">✔</td><td><strong>Bloquea el push directo.</strong> Nada entra sin PR.</td></tr>
+  <tr><td>Required approvals</td><td class="centro"><strong>1</strong></td><td class="centro"><strong>1</strong></td><td>Una aprobación humana como mínimo.</td></tr>
+  <tr><td>Require review from Code Owners</td><td class="centro si">✔</td><td class="centro si">✔</td><td>Esa aprobación tiene que ser del delegado del área (§6).</td></tr>
+  <tr><td>Dismiss stale approvals on new commits</td><td class="centro si">✔</td><td class="centro si">✔</td><td>Si cambia el código después de aprobar, hay que re-aprobar.</td></tr>
+  <tr><td>Require status checks to pass (CI)</td><td class="centro si">✔</td><td class="centro si">✔</td><td>No se mergea con la CI en rojo. Ver nota.</td></tr>
+  <tr><td>Require branches to be up to date</td><td class="centro si">✔</td><td class="centro si">✔</td><td>El PR se probó contra lo último de la rama destino.</td></tr>
+  <tr><td>Require conversation resolution</td><td class="centro si">✔</td><td class="centro si">✔</td><td>No quedan comentarios de revisión sin resolver.</td></tr>
+  <tr><td>Include administrators / sin bypass</td><td class="centro si">✔</td><td class="centro si">✔</td><td>Las reglas valen también para quien administra.</td></tr>
+  <tr><td>Allow force pushes</td><td class="centro no">✘</td><td class="centro no">✘</td><td>No se reescribe el historial compartido.</td></tr>
+  <tr><td>Allow deletions</td><td class="centro no">✘</td><td class="centro no">✘</td><td>Las ramas permanentes no se borran.</td></tr>
+</table>
+
+<h3>Ajustes generales del repositorio</h3>
+<ul>
+  <li><strong>Default branch: <code>develop</code></strong>, para que los PRs nuevos apunten ahí por defecto.</li>
+  <li><strong>Automatically delete head branches:</strong> activado, para que las ramas de tarea se borren solas al mergear.</li>
+  <li><strong>Tags <code>v*</code> protegidos</strong> (ruleset de tags): una vez creado, un tag no se mueve ni se borra.</li>
+</ul>
+
+<h3>Cómo queda en la práctica</h3>
+<div class="dos-col">
+  <div class="tarjeta roja">
+    <h3>Bloqueado</h3>
+    <ul>
+      <li><code>git push origin main</code> / <code>develop</code></li>
+      <li><code>git push --force</code> sobre ramas compartidas</li>
+      <li>Mergear sin aprobación del delegado</li>
+      <li>Mergear con la CI en rojo o sin correr</li>
+      <li>Mergear el propio PR sin otra persona que apruebe</li>
+    </ul>
+  </div>
+  <div class="tarjeta verde">
+    <h3>Permitido</h3>
+    <ul>
+      <li>Pushear a tu rama de tarea (<code>feat/…</code>, <code>fix/…</code>)</li>
+      <li>Reescribir <em>tu</em> rama con <code>--force-with-lease</code> tras un rebase (solo si nadie más la usa)</li>
+      <li>Abrir PRs en borrador para pedir opinión temprana</li>
+    </ul>
+  </div>
+</div>
+
+<div class="caja aviso">
+  <strong class="t">Estado de implementación</strong>
+  <ul>
+    <li><strong>CI:</strong> todavía no hay workflows en <code>.github/</code> (llegan en la fase 5). Cuando existan, se agrega <em>Require status checks</em> con los nombres de sus jobs (compilación y tests de backend, build de frontend). Hasta entonces, el control es el checklist de la §4 y los scripts <code>probar-*.ps1</code>.</li>
+    <li><strong>CODEOWNERS:</strong> el archivo existe pero sus líneas están comentadas; faltan los usuarios reales de GitHub (§6).</li>
+    <li><strong>develop:</strong> se crea a partir de <code>main</code> cuando se mergea la documentación del flujo.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ======================= 6. CODEOWNERS ======================= -->
+<section class="seccion">
+<h1>6. Delegado y CODEOWNERS</h1>
+<p>El <strong>delegado</strong> es la persona responsable de revisar y aprobar los cambios de un área del proyecto. En GitHub se formaliza con <a href="#" style="color:inherit;text-decoration:none"><code>.github/CODEOWNERS</code></a>: cuando un PR toca esas carpetas, GitHub le pide la revisión automáticamente, y con <em>Require review from Code Owners</em> el PR <strong>no se puede mergear sin su aprobación</strong>.</p>
+
+<pre><span class="c"># .github/CODEOWNERS — si varias líneas coinciden, vale la última</span>
+/tierra-backend/                                    @delegado-back
+/tierra-frontend/                                   @delegado-front
+/tierra-infra/                                      @administrador
+/tierra-backend/src/main/resources/db/migration/    @delegado-back @administrador
+/.github/                                           @administrador
+/CONTRIBUTING.md                                    @administrador
+/docs/decisiones/                                   @administrador</pre>
+
+<table>
+  <tr><th>Si el PR toca…</th><th>Aprueba</th></tr>
+  <tr><td><code>tierra-backend/</code></td><td>Delegado de backend</td></tr>
+  <tr><td><code>tierra-frontend/</code></td><td>Delegado de frontend</td></tr>
+  <tr><td>Migraciones Flyway</td><td>Delegado de backend <strong>y</strong> administrador</td></tr>
+  <tr><td><code>tierra-infra/</code>, <code>.github/</code>, <code>CONTRIBUTING.md</code>, <code>docs/decisiones/</code></td><td>Administrador</td></tr>
+  <tr><td>Backend y frontend a la vez</td><td>Ambos delegados</td></tr>
+</table>
+
+<h3>Reglas de la aprobación</h3>
+<ul>
+  <li>Se exige <strong>al menos 1 aprobación</strong>, y tiene que ser de un code owner del área tocada.</li>
+  <li><strong>Nadie aprueba su propio PR.</strong> Si el autor es el delegado, aprueba el otro delegado o el administrador.</li>
+  <li>Los usuarios del archivo deben existir y tener <strong>permiso de escritura</strong> en el repo; si no, GitHub marca la regla como inválida y deja de asignar revisores.</li>
+  <li>Los cambios al propio <code>CODEOWNERS</code> van por PR como cualquier otro, y los aprueba el administrador.</li>
+  <li>Un agente puede <em>preparar</em> un PR, pero la aprobación es siempre de una persona.</li>
+</ul>
+</section>
+
+<!-- ======================= 7. HOTFIX ======================= -->
+<section class="seccion">
+<h1>7. Hotfix: arreglos urgentes en producción</h1>
+<p>Se usa <strong>solo</strong> cuando hay un bug grave en lo que ya está en producción y no se puede esperar al ciclo normal. Es la única rama que nace de <code>main</code>: ahí está lo que corre en producción, mientras que <code>develop</code> puede tener trabajo a medio validar.</p>
+
+<div class="caja">
+  <strong class="t">¿Es un hotfix?</strong>
+  <p><strong>Sí:</strong> la producción está caída, se pierden pedidos o pagos, hay una falla de seguridad. &nbsp; <strong>No:</strong> un bug molesto pero tolerable, algo que se puede planificar → <code>fix/</code> desde <code>develop</code>.</p>
+</div>
+
+<ol class="pasos">
+  <li><strong>Partí de <code>main</code> actualizada</strong> y creá la rama.
+<pre>git switch main
+git pull
+git switch -c hotfix/back-webhook-mp</pre></li>
+  <li><strong>Arreglá SOLO ese problema.</strong> Nada de mejoras ni limpiezas de paso. Commits con <code>fix:</code>.</li>
+  <li><strong>Subí y abrí PR <code>hotfix/… → main</code>.</strong> Mismas protecciones: 1 aprobación del delegado y CI en verde. Se mergea con <em>Create a merge commit</em>.
+<pre>git push -u origin hotfix/back-webhook-mp</pre></li>
+  <li><strong>Publicá el tag de PARCHE</strong> sobre el commit resultante en <code>main</code> (ver §8): <code>v1.0.0</code> → <code>v1.0.1</code>.</li>
+  <li><strong>Abrí un segundo PR <code>hotfix/… → develop</code></strong> para que el arreglo no se pierda en el próximo release. <strong>Es el paso que más se olvida.</strong> Merge commit también.</li>
+</ol>
+
+<div class="diagrama">
+<svg viewBox="0 0 700 150" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="12">
+  <text x="5" y="32" font-weight="700" fill="#3e2714">main</text>
+  <text x="5" y="122" font-weight="700" fill="#3e2714">develop</text>
+  <line x1="70" y1="28" x2="690" y2="28" stroke="#3e2714" stroke-width="4"/>
+  <line x1="70" y1="118" x2="690" y2="118" stroke="#6b4423" stroke-width="4"/>
+  <circle cx="110" cy="28" r="6" fill="#3e2714"/><text x="110" y="14" text-anchor="middle" font-size="10" fill="#6e655a">v1.0.0</text>
+  <path d="M170 28 C190 28 190 72 215 72 L275 72 C300 72 300 28 320 28" fill="none" stroke="#a63d2f" stroke-width="3"/>
+  <text x="245" y="65" text-anchor="middle" font-size="11" fill="#a63d2f">hotfix/back-…</text>
+  <circle cx="320" cy="28" r="6" fill="#3e2714"/><text x="320" y="14" text-anchor="middle" font-size="10" fill="#6e655a" font-weight="700">v1.0.1</text>
+  <path d="M275 72 C330 72 340 118 380 118" fill="none" stroke="#a63d2f" stroke-width="3" stroke-dasharray="5 4"/>
+  <text x="470" y="100" font-size="10" fill="#a63d2f">② segundo PR: hotfix → develop</text>
+  <text x="345" y="46" font-size="10" fill="#a63d2f">① PR hotfix → main + tag</text>
+</svg>
+</div>
+</section>
+
+<!-- ======================= 8. RELEASES Y TAGS ======================= -->
+<section class="seccion">
+<h1>8. Releases y tags</h1>
+<p>Una release es el momento en que lo que hay en <code>develop</code> pasa a producción.</p>
+
+<ol class="pasos">
+  <li><strong>Abrí un PR <code>develop → main</code></strong> con título <code>release: vX.Y.Z</code> y la lista de lo que incluye.</li>
+  <li><strong>Revisión y merge</strong> con <em>Create a merge commit</em>. Mismas protecciones: delegado, CI en verde.</li>
+  <li><strong>Poné el tag</strong> al commit resultante en <code>main</code> y publicalo:
+<pre>git switch main
+git pull
+git tag -a v0.1.0 -m "Primera version desplegable"
+git push origin v0.1.0</pre></li>
+  <li><strong>(Opcional)</strong> Creá la <em>Release</em> en GitHub desde el tag, con el listado de cambios.</li>
+</ol>
+
+<div class="caja">
+  <strong class="t">Qué es un tag</strong>
+  <p>Una etiqueta fija sobre un commit: a diferencia de una rama, <strong>no se mueve</strong>. Sirve para saber qué código corría en cada momento, volver a una versión anterior si la nueva falla y ubicar en qué versión apareció un bug.</p>
+</div>
+
+<h2>Versionado semántico: <code>vMAYOR.MENOR.PARCHE</code></h2>
+<table>
+  <tr><th>Qué cambió</th><th>Qué número sube</th><th>Ejemplo</th></tr>
+  <tr><td>Un bug corregido (típicamente un <code>hotfix/</code>)</td><td>PARCHE</td><td><code>v1.0.0 → v1.0.1</code></td></tr>
+  <tr><td>Funcionalidad nueva que no rompe nada</td><td>MENOR</td><td><code>v1.0.1 → v1.1.0</code></td></tr>
+  <tr><td>Un cambio que rompe la compatibilidad</td><td>MAYOR</td><td><code>v1.1.0 → v2.0.0</code></td></tr>
+</table>
+<p>Mientras el proyecto no esté en producción se usa <code>v0.x.y</code>. La <code>v1.0.0</code> es la primera versión pública.</p>
+
+<h2>Estrategia de merge según el PR</h2>
+<table>
+  <tr><th>PR</th><th>Cómo se mergea en GitHub</th><th>Por qué</th></tr>
+  <tr><td>Rama de tarea → <code>develop</code></td><td><strong>Squash and merge</strong></td><td>Un commit por tarea; <code>develop</code> queda legible, sin los "wip".</td></tr>
+  <tr><td><code>develop</code> → <code>main</code> (release)</td><td><strong>Create a merge commit</strong></td><td>Conserva el historial y mantiene <code>main</code> y <code>develop</code> alineadas.</td></tr>
+  <tr><td><code>hotfix/</code> → <code>main</code> y → <code>develop</code></td><td><strong>Create a merge commit</strong></td><td>Mismo motivo.</td></tr>
+</table>
+<div class="caja alerta">
+  <strong class="t">Nunca squash de develop a main</strong>
+  <p>Git deja de reconocer que <code>develop</code> ya está incluida en <code>main</code>: las ramas divergen y el release siguiente aparece con conflictos que nadie provocó.</p>
+</div>
+</section>
+
+<!-- ======================= 9. AGENTES ======================= -->
+<section class="seccion">
+<h1>9. Reglas para agentes de IA</h1>
+<p>Los agentes que trabajan en el repo (asistentes de código, automatizaciones) siguen <strong>las mismas reglas</strong> que las personas, más las siguientes. Un agente actúa con las credenciales de quien lo lanza: lo que haga queda a nombre de esa persona, y esa persona es responsable del resultado.</p>
+
+<div class="dos-col">
+  <div class="tarjeta verde">
+    <h3>Siempre</h3>
+    <ul>
+      <li>Verificar la rama con <code>git branch --show-current</code> <strong>antes de editar</strong>.</li>
+      <li>Crear una rama de tarea desde <code>develop</code> actualizada, con prefijo y área (§3).</li>
+      <li>Commitear con formato <code>tipo: descripción</code>, de a un cambio lógico.</li>
+      <li>Traer <code>develop</code> con <code>git pull --rebase origin develop</code> antes de subir.</li>
+      <li>Abrir PR con base <code>develop</code>, explicando qué cambia y cómo probarlo.</li>
+      <li>Revisar el diff antes de commitear: sin secretos, sin <code>.env</code>, sin rutas locales.</li>
+      <li>Mantener el alcance: <strong>una tarea = una rama = un PR</strong>.</li>
+      <li>Si algo está bloqueado o falla, <strong>parar e informar</strong> a la persona.</li>
+    </ul>
+  </div>
+  <div class="tarjeta roja">
+    <h3>Nunca</h3>
+    <ul>
+      <li>Commitear o pushear sobre <code>main</code> o <code>develop</code>.</li>
+      <li><code>git push --force</code> a ramas compartidas; <code>reset --hard</code> sobre trabajo ajeno.</li>
+      <li>Usar <code>--no-verify</code> ni saltear hooks o checks.</li>
+      <li>Aprobar o mergear su propio PR, ni pedir bypass de las protecciones.</li>
+      <li>Crear, mover o borrar <strong>tags</strong> ni publicar releases (lo hace el delegado/administrador).</li>
+      <li>Abrir un <code>hotfix/</code> sin que una persona lo declare urgente.</li>
+      <li>Editar una migración Flyway ya mergeada (se crea una nueva).</li>
+      <li>Mezclar tareas distintas en una misma rama o PR.</li>
+      <li>Escribir tokens, passwords o claves en ningún archivo.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Secuencia mínima de un agente</h3>
+<pre><span class="c"># 1. Punto de partida limpio</span>
+git status                      <span class="c"># sin cambios ajenos pendientes</span>
+git switch develop; git pull
+git switch -c fix/back-webhook-idempotencia
+
+<span class="c"># 2. Cambio + commit</span>
+git add &lt;archivos concretos&gt;     <span class="c"># nunca "git add ." a ciegas</span>
+git commit -m "fix: ignorar webhook duplicado de mercado pago"
+
+<span class="c"># 3. Integrar y subir</span>
+git pull --rebase origin develop
+git push -u origin fix/back-webhook-idempotencia
+
+<span class="c"># 4. Abrir PR (base: develop) y detenerse a esperar CI + aprobación del delegado</span></pre>
+
+<div class="caja aviso">
+  <strong class="t">Ante la duda, preguntar</strong>
+  <p>Si la tarea toca los mismos archivos que la rama de otra persona, o no está claro si es <code>fix/</code> o <code>hotfix/</code>, el agente <strong>consulta antes de seguir</strong>. Coordinarse cinco minutos es más barato que resolver un conflicto después.</p>
+</div>
+</section>
+
+<!-- ======================= 10. REFERENCIA RÁPIDA ======================= -->
+<section class="seccion">
+<h1>10. Referencia rápida</h1>
+
+<table>
+  <tr><th style="width:30%">Quiero…</th><th>Hago</th></tr>
+  <tr><td>Empezar una tarea</td><td><code>git switch develop &amp;&amp; git pull &amp;&amp; git switch -c feat/back-xxx</code></td></tr>
+  <tr><td>Saber en qué rama estoy</td><td><code>git branch --show-current</code></td></tr>
+  <tr><td>Traer lo último antes de subir</td><td><code>git pull --rebase origin develop</code></td></tr>
+  <tr><td>Subir mi rama por primera vez</td><td><code>git push -u origin &lt;mi-rama&gt;</code></td></tr>
+  <tr><td>Rescatar cambios hechos sin rama</td><td><code>git switch -c feat/lo-que-sea</code></td></tr>
+  <tr><td>Guardar cosas a medias</td><td><code>git stash</code> / <code>git stash pop</code></td></tr>
+  <tr><td>Arreglar un bug en producción</td><td><code>git switch main &amp;&amp; git pull &amp;&amp; git switch -c hotfix/back-xxx</code></td></tr>
+  <tr><td>Etiquetar una versión</td><td><code>git tag -a vX.Y.Z -m "…" &amp;&amp; git push origin vX.Y.Z</code></td></tr>
+  <tr><td>Después de mergear mi PR</td><td><code>git switch develop &amp;&amp; git pull</code></td></tr>
+</table>
+
+<h2>Mensajes de error frecuentes</h2>
+<table>
+  <tr><th style="width:38%">Lo que ves</th><th>Qué pasó</th></tr>
+  <tr><td><code>push rejected … protected branch</code></td><td>Intentaste pushear a <code>main</code> o <code>develop</code>. Creá una rama y abrí un PR.</td></tr>
+  <tr><td><code>rejected … (fast-forward)</code> al subir tu rama</td><td>Creaste la rama desde un <code>develop</code> viejo. <code>git pull --rebase origin develop</code> y volvé a subir.</td></tr>
+  <tr><td>"Review required" / merge bloqueado</td><td>Falta la aprobación del code owner del área, o se descartó por commits nuevos.</td></tr>
+  <tr><td>"Required status check is expected"</td><td>La CI no corrió o falló. Revisá el log del job y arreglá la causa.</td></tr>
+  <tr><td>"Branch is out-of-date"</td><td><code>develop</code> avanzó. Actualizá la rama del PR (rebase) y esperá la CI otra vez.</td></tr>
+</table>
+
+<h2>Toda la guía en una imagen</h2>
+<div class="diagrama">
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="11">
+  <rect x="5" y="5" width="690" height="190" rx="10" fill="#fff" stroke="#ebe1cf"/>
+  <text x="25" y="32" font-weight="700" font-size="13" fill="#3e2714">Cada cambio, sin excepciones</text>
+  <g font-size="11" fill="#2b2620">
+    <text x="25" y="62">1.  Rama nueva desde <tspan font-weight="700">develop</tspan> (o desde <tspan font-weight="700">main</tspan> si es hotfix)</text>
+    <text x="25" y="86">2.  Nombre <tspan font-weight="700">prefijo/área-descripción</tspan> · commits <tspan font-weight="700">tipo: descripción</tspan></text>
+    <text x="25" y="110">3.  <tspan font-weight="700">Pull Request</tspan> — nunca push directo a main ni develop</text>
+    <text x="25" y="134">4.  <tspan font-weight="700">CI en verde</tspan> + <tspan font-weight="700">1 aprobación del delegado</tspan> (CODEOWNERS)</text>
+    <text x="25" y="158">5.  Squash a develop · merge commit a main · <tspan font-weight="700">tag vX.Y.Z</tspan> en cada release o hotfix</text>
+    <text x="25" y="182">6.  Hotfix: PR a main <tspan font-weight="700">y</tspan> segundo PR a develop</text>
+  </g>
+</svg>
+</div>
+
+<p style="color:#6e655a;font-size:8.5pt;margin-top:6mm">Fuente de verdad: <code>CONTRIBUTING.md</code> §4 (ramas y flujo) y §5 (commits), <code>.github/CODEOWNERS</code>. Este documento es un resumen operativo para consulta rápida; si cambia el flujo, se actualiza primero <code>CONTRIBUTING.md</code> y luego se regenera este PDF.</p>
+</section>
+
+</body>
+</html>

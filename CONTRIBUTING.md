@@ -20,6 +20,8 @@ Este documento explica cómo está organizado el repositorio, qué cambió en la
 
 > **Nota temporal:** la rama `TIERRA-V1` sigue existiendo hasta que todo el equipo confirme que no tiene trabajo local apoyado en ella. Está **congelada**: `main` es la rama viva. No commitees sobre `TIERRA-V1`.
 
+> **Actualización del flujo:** la Fase 0 dejó a `main` como única rama de trabajo. Con el equipo ya trabajando en paralelo se sumó `develop` como rama de integración, con releases etiquetados y ramas `hotfix/`. El detalle está en la §4.
+
 ---
 
 ## 2. Configuración inicial de tu máquina
@@ -119,6 +121,7 @@ TIERRA-Proyecto/
 ├── tierra-frontend/       # Next.js 14 + React 18 + Tailwind
 │
 ├── docs/decisiones/       # Decisiones de arquitectura (ADR)
+├── .github/CODEOWNERS     # Responsables de revisión por carpeta (§4.7)
 ├── .gitattributes         # Normalización de saltos de línea
 ├── .env.example           # Plantilla de variables del backend
 └── CONTRIBUTING.md        # Este archivo
@@ -126,66 +129,202 @@ TIERRA-Proyecto/
 
 ---
 
-## 4. Ramas
+## 4. Ramas y flujo de trabajo
 
-**Una rama por tarea. Nunca se trabaja directo sobre `main`.**
+**Una rama por tarea. Nunca se trabaja directo sobre `main` ni sobre `develop`.**
 
 En git una rama no es una carpeta con algunos archivos: es una línea de commits, y cada commit es una foto completa del proyecto. No se "mueven archivos a una rama" — se crea la rama, se trabaja ahí, y se mergea.
 
-### Nombres
+### 4.1 — Mapa de ramas
+
+Hay solo **dos ramas permanentes**. Todo lo demás es temporal y se borra al mergear.
+
+| Rama | Tipo | Qué contiene | Cómo entra código |
+|---|---|---|---|
+| `main` | Permanente | Lo que corre en producción. Cada merge lleva un tag de versión (§4.5). | PR desde `develop` (release) o desde `hotfix/` |
+| `develop` | Permanente | Integración: todo lo terminado y revisado, listo para el próximo release. | PR desde las ramas de tarea |
+| `feat/`, `fix/`, `chore/`... | Temporal | Una sola tarea. | Se crean desde `develop` |
+| `hotfix/` | Temporal | Un arreglo urgente en producción. | Se crea desde `main` |
+
+```
+main      ●━━━━━━━━━━━━━━━━━━━━━●━━━━━━━━━━━━━━━●━━━━  producción (cada ● lleva un tag)
+           ╲                   ╱ ╲             ╱
+develop     ●━━●━━━━●━━━●━━━━━●   ●━━●━━━━●━━━●
+               ╲   ╱     ╲   ╱
+                ●━●       ●━●          ramas de tarea: nacen y mueren en develop
+```
+
+> **No hay ramas `back` ni `front`.** El repo es un monorepo y muchas funcionalidades tocan las dos partes (el login, por ejemplo). Partirlas en dos ramas obligaría a dos PRs y dos integraciones por una misma funcionalidad. El área se identifica por el nombre de la rama (§4.2) y la revisión la reparte `CODEOWNERS` (§4.7).
+
+### 4.2 — Nombres
+
+Formato: `<prefijo>/<área>-<descripción>`
 
 | Prefijo | Para qué | Ejemplo |
 |---|---|---|
-| `feat/` | Funcionalidad nueva | `feat/login-backend` |
-| `fix/` | Corrección de un bug | `fix/webhook-idempotencia` |
+| `feat/` | Funcionalidad nueva | `feat/back-registro-usuario` |
+| `fix/` | Corrección de un bug (no urgente) | `fix/back-webhook-idempotencia` |
 | `chore/` | Configuración, build, dependencias | `chore/flyway-migraciones` |
 | `docs/` | Documentación | `docs/decisiones-arquitectura` |
-| `test/` | Tests | `test/inventario-service` |
+| `test/` | Tests | `test/back-inventario-service` |
+| `refactor/` | Reordenar código sin cambiar lo que hace | `refactor/front-carrito` |
+| `hotfix/` | Arreglo **urgente en producción** (§4.6) | `hotfix/back-webhook-mp` |
 
-Todo en minúscula, palabras separadas por guion, sin tildes ni ñ.
+**El área** va justo después de la barra e indica qué parte del proyecto toca la tarea:
 
-### Flujo de trabajo
+| La tarea toca | Área | Ejemplo |
+|---|---|---|
+| Solo `tierra-backend/` | `back-` | `feat/back-registro-usuario` |
+| Solo `tierra-frontend/` | `front-` | `feat/front-tema-oscuro` |
+| Las dos, infraestructura o documentación | *(sin área)* | `feat/login`, `chore/flyway-migraciones` |
+
+Si la tarea tiene identificador en el tablero (`H2`, `F1`...), puede ir después del área: `feat/back-H2-registro-usuario`. Es opcional, pero ayuda a cruzar rama y tarea.
+
+Reglas generales: todo en minúscula, palabras separadas por guion, sin espacios, sin tildes ni ñ, y nombres cortos que digan qué se hace.
+
+### 4.3 — Flujo de una tarea
 
 ```powershell
-# 1. Partir siempre de main actualizada
-git switch main
+# 1. Partir siempre de develop actualizada
+git switch develop
 git pull
 
 # 2. Crear la rama de tu tarea
-git switch -c feat/login-backend
+git switch -c feat/back-registro-usuario
 
 # 3. Trabajar y commitear las veces que haga falta
 git add <archivos>
 git commit -m "feat: endpoint de registro de usuario"
 
-# 4. Antes de subir, traer lo último de main
-git pull --rebase origin main
+# 4. Antes de subir, traer lo último de develop
+git pull --rebase origin develop
 
 # 5. Subir
-git push -u origin feat/login-backend
+git push -u origin feat/back-registro-usuario
 ```
 
-Después abrís el Pull Request en GitHub, pedís revisión, y cuando está aprobado se mergea. Borrá la rama después del merge.
+Después abrís el Pull Request en GitHub y pedís revisión. Cuando está aprobado se mergea. Borrá la rama después del merge.
+
+> ⚠️ **El PR apunta a `develop`, no a `main`.** Al abrirlo, verificá en GitHub que el campo *base* diga `develop`. Un PR de una rama de tarea contra `main` se salta la integración.
 
 ### ⚠️ Después de que se mergea un PR
 
-**Actualizá tu `main` local antes de crear la rama siguiente:**
+**Actualizá tu `develop` local antes de crear la rama siguiente:**
+
+```powershell
+git switch develop
+git pull
+```
+
+El merge ocurre en GitHub, no en tu máquina. Si te salteás este paso y creás la rama nueva desde un `develop` viejo, tu rama nace sin los cambios que se acaban de mergear, y el push va a ser rechazado con un mensaje sobre *fast-forward* que no dice cuál es el problema real.
+
+### 4.4 — Estrategia de merge
+
+| PR | Cómo se mergea en GitHub | Por qué |
+|---|---|---|
+| Rama de tarea → `develop` | **Squash and merge** | Un commit por tarea: `develop` queda legible, sin los "wip" ni los "arreglo typo" intermedios. |
+| `develop` → `main` (release) | **Create a merge commit** | Conserva el historial de la integración y mantiene `main` y `develop` alineadas. |
+| `hotfix/` → `main` y `hotfix/` → `develop` | **Create a merge commit** | Mismo motivo. |
+
+> **Nunca hagas squash de `develop` a `main`.** Si lo hacés, git deja de reconocer que `develop` ya está incluida en `main`: las dos ramas divergen y el release siguiente aparece con conflictos que nadie provocó.
+
+Como el título del squash pasa a ser el mensaje del commit en `develop`, tiene que respetar el formato de la §5.
+
+### 4.5 — Releases y tags
+
+Una release es el momento en que lo que hay en `develop` pasa a producción.
+
+1. Se abre un PR **`develop` → `main`** con título `release: vX.Y.Z` y la lista de lo que incluye.
+2. Se revisa, se mergea (*merge commit*, §4.4).
+3. Se le pone un **tag** al commit resultante en `main`:
 
 ```powershell
 git switch main
 git pull
+git tag -a v0.1.0 -m "Primera version desplegable"
+git push origin v0.1.0
 ```
 
-El merge ocurre en GitHub, no en tu máquina. Si te salteás este paso y creás la rama nueva desde un `main` viejo, tu rama nace sin los cambios que se acaban de mergear, y el push va a ser rechazado con un mensaje sobre *fast-forward* que no dice cuál es el problema real.
+Un **tag** es una etiqueta fija sobre un commit: a diferencia de una rama, no se mueve. Sirve para saber exactamente qué código corría en cada momento, volver a una versión anterior si la nueva falla y ubicar en qué versión apareció un bug. En GitHub, desde el tag se puede crear una *Release* con el listado de cambios.
 
-### Dos comandos que te van a salvar
+**Versionado semántico:** `vMAYOR.MENOR.PARCHE`
+
+| Qué cambió | Qué número sube | Ejemplo |
+|---|---|---|
+| Un bug corregido (típicamente un `hotfix/`) | PARCHE | `v1.0.0` → `v1.0.1` |
+| Funcionalidad nueva que no rompe nada | MENOR | `v1.0.1` → `v1.1.0` |
+| Un cambio que rompe la compatibilidad | MAYOR | `v1.1.0` → `v2.0.0` |
+
+Mientras el proyecto no esté en producción usamos `v0.x.y`. La `v1.0.0` es la primera versión que sale al público.
+
+### 4.6 — Hotfix: arreglos urgentes en producción
+
+Se usa **solo** cuando hay un bug grave en lo que ya está en producción y no se puede esperar al ciclo normal. Es la única rama que nace de `main`: ahí está lo que corre en producción, mientras que `develop` puede tener trabajo a medio validar.
+
+```
+main      ●━━━━━━━━━━━━━●━━━━━━━●  v1.0.1
+           ╲           ╱         ╲
+hotfix      ╲━━━━━●━━━●           ╲
+                                   ╲
+develop   ●━━━━●━━━━━━━━━━●━━━━━━━━━●  el arreglo también baja acá
+```
+
+```powershell
+git switch main
+git pull
+git switch -c hotfix/back-webhook-mp
+# ...se arregla SOLO ese problema, sin agregar nada más...
+git push -u origin hotfix/back-webhook-mp
+```
+
+1. PR **`hotfix/...` → `main`**. Se mergea y se publica con tag de PARCHE (`v1.0.1`).
+2. **Después, un segundo PR `hotfix/...` → `develop`**, para que el arreglo no se pierda en el próximo release. Es el paso que más se olvida.
+
+### 4.7 — CODEOWNERS: quién revisa qué
+
+El archivo [`.github/CODEOWNERS`](.github/CODEOWNERS) le dice a GitHub **quién es responsable de cada carpeta**. Cuando un PR toca esos archivos, GitHub pide la revisión a esos responsables automáticamente.
+
+```text
+/tierra-backend/    @usuario-back
+/tierra-frontend/   @usuario-front
+```
+
+Con la protección de rama **Require review from Code Owners** (§4.8), un PR no se puede mergear sin la aprobación del responsable del área que toca. Reemplaza a las ramas `back` y `front` como forma de controlar quién aprueba qué.
+
+Si el archivo cambia (alguien entra o sale del equipo, o se reparten distinto las áreas), se modifica por PR como cualquier otro cambio.
+
+### 4.8 — Protección de ramas (configuración en GitHub)
+
+Esto se configura una sola vez en *Settings → Branches*, y lo hace quien administra el repositorio.
+
+| Ajuste | `main` | `develop` |
+|---|---|---|
+| Require a pull request before merging | ✅ | ✅ |
+| Required approvals | 1 | 1 |
+| Require review from Code Owners | ✅ | ✅ |
+| Dismiss stale approvals when new commits are pushed | ✅ | ✅ |
+| Require conversation resolution before merging | ✅ | ✅ |
+| Restrict force pushes / Allow deletions | ❌ / ❌ | ❌ / ❌ |
+
+Además, en *Settings → General*:
+
+- **Default branch: `develop`.** Así los PRs nuevos apuntan a `develop` por defecto.
+- **Automatically delete head branches:** activado, para que las ramas de tarea se borren solas al mergear.
+
+Cuando exista integración continua (fase 5), se suma **Require status checks to pass** en las dos ramas.
+
+### 4.9 — Dos comandos que te van a salvar
 
 - **Empezaste a editar sin crear la rama:** `git switch -c feat/lo-que-sea` se lleva los cambios sin commitear con vos.
 - **Necesitás cambiar de rama con cosas a medias:** `git stash` las guarda aparte y `git stash pop` te las devuelve.
 
-### Regla de oro
+### 4.10 — Regla de oro
 
 Si tu rama va a tocar los mismos archivos que la de otra persona, hablalo antes. Es más barato coordinarse cinco minutos que resolver un conflicto de tres archivos después.
+
+### 4.11 — Transición al flujo con `develop`
+
+> **Nota temporal:** `develop` se crea a partir de `main` el día que se mergea este documento. Desde ese momento, las ramas nuevas parten de `develop` y los PRs apuntan a `develop`. Las ramas abiertas que ya salieron de `main` pueden terminar su PR como estaban; la próxima tarea, ya con el flujo nuevo. Cuando esto esté asimilado, se borra esta nota.
 
 ---
 
@@ -204,7 +343,7 @@ refactor: extraer el calculo de descuento a un metodo propio
 
 Un commit debería poder explicarse en una línea. Si necesitás una "y" en la descripción, probablemente son dos commits.
 
-No hace falta que cada commit deje la aplicación funcionando — para eso está la rama. Lo que sí tiene que funcionar es lo que se mergea a `main`.
+No hace falta que cada commit deje la aplicación funcionando — para eso está la rama. Lo que sí tiene que funcionar es lo que se mergea a `develop`, y con más razón lo que llega a `main`.
 
 ---
 
@@ -405,5 +544,7 @@ Estructura: contexto, decisión, consecuencias. No hace falta que sea largo, sí
 - [ ] `git status` no muestra archivos que no querías subir
 - [ ] No hay credenciales, tokens ni rutas absolutas de tu máquina en el diff
 - [ ] Si tocaste el esquema, hay una migración nueva y las entidades están actualizadas
-- [ ] Hiciste `git pull --rebase origin main` y no quedaron conflictos
+- [ ] Hiciste `git pull --rebase origin develop` y no quedaron conflictos
+- [ ] El PR apunta a `develop` (o a `main`, solo si es un `hotfix/` o un release; ver §4)
+- [ ] El nombre de la rama sigue el formato `<prefijo>/<área>-<descripción>` (§4.2)
 - [ ] La descripción del PR dice **qué cambia y cómo probarlo**

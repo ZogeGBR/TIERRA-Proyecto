@@ -1,0 +1,26 @@
+# CODEOWNERS — responsables de revisión por carpeta.
+# GitHub pide automáticamente la revisión a estos usuarios cuando un PR toca
+# los archivos indicados. Ver CONTRIBUTING.md §4.7 y §4.8.
+#
+# Formato:  <ruta>   @usuario-de-github [@otro-usuario ...]
+# Si varias líneas coinciden con un archivo, vale la ÚLTIMA.
+#
+# TODO (quien administra las ramas): completar con los usuarios reales de
+# GitHub y descomentar las líneas. Mientras estén comentadas, este archivo no
+# asigna revisores. Un usuario inexistente o sin permisos de escritura en el
+# repo hace que GitHub marque la regla como inválida.
+
+# Backend (Spring Boot)
+# /tierra-backend/    @usuario-back-1 @usuario-back-2
+
+# Frontend (Next.js)
+# /tierra-frontend/   @usuario-front-1 @usuario-front-2
+
+# Infraestructura y base de datos
+# /tierra-infra/      @usuario-admin
+# /tierra-backend/src/main/resources/db/migration/   @usuario-back-1 @usuario-admin
+
+# Reglas del repositorio y decisiones de arquitectura
+# /.github/           @usuario-admin
+# /CONTRIBUTING.md    @usuario-admin
+# /docs/decisiones/   @usuario-admin

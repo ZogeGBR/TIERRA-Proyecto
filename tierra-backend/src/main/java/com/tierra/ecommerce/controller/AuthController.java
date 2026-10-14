@@ -4,19 +4,16 @@ import com.tierra.ecommerce.dto.LoginRequest;
 import com.tierra.ecommerce.dto.RegistroRequest;
 import com.tierra.ecommerce.dto.UsuarioResponse;
 import com.tierra.ecommerce.entity.Usuario;
+import com.tierra.ecommerce.security.SesionAutenticacionService;
 import com.tierra.ecommerce.security.UsuarioAutenticado;
 import com.tierra.ecommerce.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
 // Registro, login y consulta de la sesión actual.
@@ -29,12 +26,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final SecurityContextRepository securityContextRepository;
+    private final SesionAutenticacionService sesionAutenticacionService;
 
     public AuthController(AuthService authService,
-                          SecurityContextRepository securityContextRepository) {
+                          SesionAutenticacionService sesionAutenticacionService) {
         this.authService = authService;
-        this.securityContextRepository = securityContextRepository;
+        this.sesionAutenticacionService = sesionAutenticacionService;
     }
 
     @PostMapping("/registro")
@@ -49,7 +46,7 @@ public class AuthController {
         UsuarioAutenticado principal = new UsuarioAutenticado(usuario);
         Authentication auth = UsernamePasswordAuthenticationToken.authenticated(
                 principal, null, principal.getAuthorities());
-        iniciarSesion(auth, httpRequest, httpResponse);
+        sesionAutenticacionService.iniciarSesion(auth, httpRequest, httpResponse);
 
         return AuthService.aResponse(usuario);
     }
@@ -59,7 +56,7 @@ public class AuthController {
                                  HttpServletRequest httpRequest,
                                  HttpServletResponse httpResponse) {
         Authentication auth = authService.autenticar(request);
-        iniciarSesion(auth, httpRequest, httpResponse);
+        sesionAutenticacionService.iniciarSesion(auth, httpRequest, httpResponse);
         return AuthService.aResponse((UsuarioAutenticado) auth.getPrincipal());
     }
 
@@ -68,31 +65,5 @@ public class AuthController {
         // No hace falta chequear null: la regla de SecurityConfig ya exige
         // sesión para llegar acá, y sin ella el entry point devuelve 401.
         return AuthService.aResponse(usuario);
-    }
-
-    // Guarda la autenticación en la sesión HTTP.
-    //
-    // ESTE ES EL PASO QUE MÁS SE OLVIDA. En Spring Security 6, poner la
-    // autenticación en el SecurityContextHolder ya NO la persiste sola: hay
-    // que escribirla explícitamente en el repositorio. Buena parte de los
-    // ejemplos que circulan son de versiones anteriores y omiten esta línea.
-    // El síntoma es desconcertante: el login devuelve 200 con su cookie, y la
-    // request siguiente llega sin sesión.
-    private void iniciarSesion(Authentication auth,
-                               HttpServletRequest request,
-                               HttpServletResponse response) {
-        // Protección contra fijación de sesión: si alguien llegó con una
-        // sesión anónima ya existente, el identificador cambia al autenticarse.
-        // El filtro de Spring que hace esto no interviene cuando el login es
-        // manual como acá, así que hay que hacerlo a mano.
-        HttpSession sesionPrevia = request.getSession(false);
-        if (sesionPrevia != null) {
-            request.changeSessionId();
-        }
-
-        SecurityContext contexto = SecurityContextHolder.createEmptyContext();
-        contexto.setAuthentication(auth);
-        SecurityContextHolder.setContext(contexto);
-        securityContextRepository.saveContext(contexto, request, response);
     }
 }

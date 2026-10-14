@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import type { ProductoDetalle } from "@/lib/types";
 
@@ -37,16 +38,16 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
   }
 
   if (producto.variantes.length === 0) {
-    return <p className="mt-6 text-tierra-bordo-oscuro/60">Sin variantes disponibles por ahora.</p>;
+    return <p className="mt-6 text-tierra-terracota-oscuro/60">Sin variantes disponibles por ahora.</p>;
   }
 
   return (
     <div className="mt-6">
-      <label className="block text-sm font-medium text-tierra-bordo-oscuro mb-1">Talla / color</label>
+      <label className="block text-sm font-medium text-tierra-terracota-oscuro mb-1">Talla / color</label>
       <select
         value={varianteId}
         onChange={(e) => setVarianteId(e.target.value)}
-        className="border border-tierra-crema-oscuro rounded px-3 py-2 w-full transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+        className="border border-tierra-crema-oscuro rounded px-3 py-2 w-full transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
       >
         {producto.variantes.map((v) => {
           const sinStock = v.controlaStock !== false && v.stock === 0;
@@ -65,7 +66,7 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
           max={variante?.controlaStock === false ? 99 : (variante?.stock ?? 1)}
           value={cantidad}
           onChange={(e) => setCantidad(Number(e.target.value))}
-          className="border border-tierra-crema-oscuro rounded px-3 py-2 w-20 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+          className="border border-tierra-crema-oscuro rounded px-3 py-2 w-20 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
         />
         <button
           onClick={handleAgregar}
@@ -75,12 +76,13 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
         </button>
       </div>
 
-      {mensaje && <p className="mt-2 text-sm text-tierra-bordo-oscuro">{mensaje}</p>}
+      {mensaje && <p className="mt-2 text-sm text-tierra-terracota-oscuro">{mensaje}</p>}
 
       <button
         onClick={() => router.push("/carrito")}
-        className="mt-3 text-sm text-tierra-azul underline hover:text-tierra-bordo transition-colors focus:outline-none focus:ring-2 focus:ring-tierra-azul/40 rounded"
+        className="btn-secundario w-full mt-3"
       >
+        <ShoppingCart size={16} />
         Ir al carrito
       </button>
     </div>

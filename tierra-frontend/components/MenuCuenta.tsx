@@ -97,11 +97,11 @@ export function MenuCuenta() {
         <div
           role="menu"
           className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-tierra-crema-oscuro
-                     shadow-lg py-2 text-sm text-tierra-bordo-oscuro z-30"
+                     shadow-lg py-2 text-sm text-tierra-terracota-oscuro z-30"
         >
           <div className="px-4 py-2 border-b border-tierra-crema-oscuro">
             <p className="font-medium">Hola, {primerNombre}</p>
-            <p className="text-xs text-tierra-bordo-oscuro/60 truncate">{usuario.email}</p>
+            <p className="text-xs text-tierra-terracota-oscuro/60 truncate">{usuario.email}</p>
           </div>
 
           <button

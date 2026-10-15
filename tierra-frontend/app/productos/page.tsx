@@ -27,10 +27,10 @@ export default async function CatalogoPage({
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-bordo-oscuro mb-6">Catálogo</h1>
+      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Catálogo</h1>
 
       {productos.length === 0 ? (
-        <p className="text-tierra-bordo-oscuro/60">
+        <p className="text-tierra-terracota-oscuro/60">
           No hay productos para mostrar todavía. Elegí una categoría o marca desde el inicio.
         </p>
       ) : (

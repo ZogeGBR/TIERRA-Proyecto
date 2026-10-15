@@ -64,14 +64,14 @@ function FormularioRegistro() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
-      <h1 className="text-3xl mb-2 text-tierra-bordo-oscuro">Crear cuenta</h1>
-      <p className="text-tierra-bordo-oscuro/70 mb-8">
+      <h1 className="text-3xl mb-2 text-tierra-terracota-oscuro">Crear cuenta</h1>
+      <p className="text-tierra-terracota-oscuro/70 mb-8">
         Con tu cuenta vas a poder comprar y seguir tus pedidos.
       </p>
 
       <form onSubmit={manejarEnvio} className="bg-white rounded-2xl p-6 space-y-5">
         <div>
-          <label htmlFor="nombre" className="block mb-1 font-medium text-tierra-bordo-oscuro">
+          <label htmlFor="nombre" className="block mb-1 font-medium text-tierra-terracota-oscuro">
             Nombre y apellido
           </label>
           <input
@@ -83,12 +83,12 @@ function FormularioRegistro() {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             className="w-full border border-tierra-crema-oscuro rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-tierra-azul"
+                       focus:outline-none focus:ring-2 focus:ring-tierra-verde"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block mb-1 font-medium text-tierra-bordo-oscuro">
+          <label htmlFor="email" className="block mb-1 font-medium text-tierra-terracota-oscuro">
             Email
           </label>
           <input
@@ -100,13 +100,13 @@ function FormularioRegistro() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full border border-tierra-crema-oscuro rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-tierra-azul"
+                       focus:outline-none focus:ring-2 focus:ring-tierra-verde"
           />
         </div>
 
         <div>
-          <label htmlFor="telefono" className="block mb-1 font-medium text-tierra-bordo-oscuro">
-            Teléfono <span className="font-normal text-tierra-bordo-oscuro/60">(opcional)</span>
+          <label htmlFor="telefono" className="block mb-1 font-medium text-tierra-terracota-oscuro">
+            Teléfono <span className="font-normal text-tierra-terracota-oscuro/60">(opcional)</span>
           </label>
           <input
             id="telefono"
@@ -116,12 +116,12 @@ function FormularioRegistro() {
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
             className="w-full border border-tierra-crema-oscuro rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-tierra-azul"
+                       focus:outline-none focus:ring-2 focus:ring-tierra-verde"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block mb-1 font-medium text-tierra-bordo-oscuro">
+          <label htmlFor="password" className="block mb-1 font-medium text-tierra-terracota-oscuro">
             Contraseña
           </label>
           <input
@@ -134,9 +134,9 @@ function FormularioRegistro() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border border-tierra-crema-oscuro rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-tierra-azul"
+                       focus:outline-none focus:ring-2 focus:ring-tierra-verde"
           />
-          <p className="mt-1 text-sm text-tierra-bordo-oscuro/60">
+          <p className="mt-1 text-sm text-tierra-terracota-oscuro/60">
             Al menos {LARGO_MINIMO_PASSWORD} caracteres.
           </p>
         </div>
@@ -144,7 +144,7 @@ function FormularioRegistro() {
         <div>
           <label
             htmlFor="repetirPassword"
-            className="block mb-1 font-medium text-tierra-bordo-oscuro"
+            className="block mb-1 font-medium text-tierra-terracota-oscuro"
           >
             Repetir contraseña
           </label>
@@ -157,7 +157,7 @@ function FormularioRegistro() {
             value={repetirPassword}
             onChange={(e) => setRepetirPassword(e.target.value)}
             className="w-full border border-tierra-crema-oscuro rounded-lg px-3 py-2
-                       focus:outline-none focus:ring-2 focus:ring-tierra-azul"
+                       focus:outline-none focus:ring-2 focus:ring-tierra-verde"
           />
         </div>
 
@@ -170,9 +170,9 @@ function FormularioRegistro() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-tierra-bordo-oscuro/80">
+      <p className="mt-6 text-center text-tierra-terracota-oscuro/80">
         ¿Ya tenés cuenta?{" "}
-        <Link href="/login" className="text-tierra-azul underline">
+        <Link href="/login" className="text-tierra-verde underline">
           Iniciá sesión
         </Link>
       </p>

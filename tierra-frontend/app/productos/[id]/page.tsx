@@ -16,10 +16,10 @@ export default async function ProductoDetallePage({ params }: { params: Promise<
       </div>
 
       <div>
-        <p className="text-sm text-tierra-bordo-oscuro/60">{producto.marca}</p>
-        <h1 className="font-serif text-3xl font-semibold text-tierra-bordo-oscuro">{producto.nombre}</h1>
+        <p className="text-sm text-tierra-terracota-oscuro/60">{producto.marca}</p>
+        <h1 className="font-serif text-3xl font-semibold text-tierra-terracota-oscuro">{producto.nombre}</h1>
         <p className="mt-2 text-2xl font-bold">${producto.precio.toLocaleString("es-AR")}</p>
-        <p className="mt-4 text-tierra-bordo-oscuro/80">{producto.descripcion}</p>
+        <p className="mt-4 text-tierra-terracota-oscuro/80">{producto.descripcion}</p>
 
         <AgregarAlCarrito producto={producto} />
       </div>

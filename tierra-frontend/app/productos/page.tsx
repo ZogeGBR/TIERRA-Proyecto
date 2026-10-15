@@ -8,15 +8,17 @@ import { ProductCard } from "@/components/ProductCard";
 export default async function CatalogoPage({
   searchParams
 }: {
-  searchParams: { categoriaId?: string; marcaId?: string };
+  // Desde Next 15, searchParams llega como Promise y hay que esperarlo.
+  searchParams: Promise<{ categoriaId?: string; marcaId?: string }>;
 }) {
+  const { categoriaId, marcaId } = await searchParams;
   let productos: Awaited<ReturnType<typeof api.productos.listarPorCategoria>> = [];
 
   try {
-    if (searchParams.categoriaId) {
-      productos = await api.productos.listarPorCategoria(searchParams.categoriaId);
-    } else if (searchParams.marcaId) {
-      productos = await api.productos.listarPorMarca(searchParams.marcaId);
+    if (categoriaId) {
+      productos = await api.productos.listarPorCategoria(categoriaId);
+    } else if (marcaId) {
+      productos = await api.productos.listarPorMarca(marcaId);
     }
   } catch {
     // Si el backend todavía no está levantado, mostramos el catálogo vacío

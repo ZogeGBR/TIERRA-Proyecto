@@ -1,5 +1,6 @@
 # --- Compilados y dependencias ---
 target/
+tierra-backend/bin/
 build/
 out/
 node_modules/

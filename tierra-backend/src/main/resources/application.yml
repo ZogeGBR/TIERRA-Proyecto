@@ -58,6 +58,26 @@ auth:
   intentos-maximos: ${LOGIN_INTENTOS_MAXIMOS:5}
   bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}
 
+  # Acceso de clientes por código de seis dígitos (ADR 0005). Los valores
+  # por defecto son los que fija el ADR; cambiarlos es una decisión, no un
+  # ajuste técnico.
+  codigo:
+    vigencia-minutos: ${CODIGO_VIGENCIA_MINUTOS:10}
+    # Verificaciones fallidas por código antes de que quede agotado.
+    intentos-maximos: ${CODIGO_INTENTOS_MAXIMOS:5}
+    solicitudes-por-15-minutos: ${CODIGO_SOLICITUDES_15_MIN:3}
+    solicitudes-por-dia: ${CODIGO_SOLICITUDES_DIA:5}
+    # Códigos agotados seguidos que bloquean al cliente.
+    agotados-para-bloqueo: ${CODIGO_AGOTADOS_BLOQUEO:3}
+    bloqueo-minutos: ${CODIGO_BLOQUEO_MINUTOS:60}
+    # Clave del HMAC con que se guardan los códigos. Sin default a propósito:
+    # sin ella el backend no arranca (ver CodigoAccesoConfig). El perfil dev
+    # trae una fija; en cualquier otro entorno va por variable de entorno.
+    clave-hmac: ${CODIGO_ACCESO_CLAVE:}
+    # Solo lo usa el envío de desarrollo, que escribe cada código en un
+    # archivo de esta carpeta para que lo lean los scripts de verificación.
+    directorio-desarrollo: ${CODIGO_DIRECTORIO_DEV:target/codigos-dev}
+
 cors:
   # Lista separada por comas. Nunca comodín: con credenciales habilitadas la
   # especificación de CORS lo prohíbe y el navegador rechaza la respuesta.

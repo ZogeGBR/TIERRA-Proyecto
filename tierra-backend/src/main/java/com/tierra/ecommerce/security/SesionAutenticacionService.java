@@ -3,19 +3,29 @@ package com.tierra.ecommerce.security;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.util.Set;
+
 // Abre la sesión HTTP de un usuario que ya se autenticó.
 //
 // Se extrajo de AuthController para que exista una sola copia de esta
-// lógica, que es fácil de romper sin que se note. Hoy la usa el login; con
-// el acceso por código (ADR 0005, tarea 3) la van a usar el login del equipo
-// y la verificación del código, y acá se va a fijar la duración de la sesión
-// según el rol.
+// lógica, que es fácil de romper sin que se note. La usan los dos canales
+// de acceso (ADR 0005): el login del equipo y la verificación del código.
+//
+// La duración de la sesión depende del rol. Los clientes usan la del
+// servidor (server.servlet.session.timeout, 7 días de inactividad). El
+// equipo, una más corta (auth.sesion-equipo, 12 horas): desde su sesión se
+// ven los datos de todos los clientes, y hoy no hay forma de cerrar una
+// sesión a distancia si se pierde un celular o queda abierta la computadora
+// del local.
 //
 // EL CHECKOUT NO LA USA: comprar nunca abre sesión (ADR 0005). Si se la
 // llamara desde ahí, cualquiera que escribiera un email ajeno entraría a la
@@ -30,10 +40,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class SesionAutenticacionService {
 
-    private final SecurityContextRepository securityContextRepository;
+    private static final Set<String> ROLES_EQUIPO = Set.of("ROLE_ADMIN", "ROLE_OPERADOR");
 
-    public SesionAutenticacionService(SecurityContextRepository securityContextRepository) {
+    private final SecurityContextRepository securityContextRepository;
+    private final Duration duracionSesionEquipo;
+
+    public SesionAutenticacionService(SecurityContextRepository securityContextRepository,
+                                      @Value("${auth.sesion-equipo}") Duration duracionSesionEquipo) {
         this.securityContextRepository = securityContextRepository;
+        this.duracionSesionEquipo = duracionSesionEquipo;
     }
 
     public void iniciarSesion(Authentication auth,
@@ -52,5 +67,21 @@ public class SesionAutenticacionService {
         contexto.setAuthentication(auth);
         SecurityContextHolder.setContext(contexto);
         securityContextRepository.saveContext(contexto, request, response);
+
+        if (esDelEquipo(auth)) {
+            HttpSession sesion = request.getSession(false);
+            if (sesion != null) {
+                sesion.setMaxInactiveInterval((int) duracionSesionEquipo.toSeconds());
+            }
+        }
+    }
+
+    private static boolean esDelEquipo(Authentication auth) {
+        for (GrantedAuthority autoridad : auth.getAuthorities()) {
+            if (ROLES_EQUIPO.contains(autoridad.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

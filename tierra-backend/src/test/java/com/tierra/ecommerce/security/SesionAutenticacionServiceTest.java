@@ -13,28 +13,31 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
+import java.time.Duration;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-// Los dos comportamientos de este servicio que ningún script de verificación
-// comprueba: que el identificador de sesión cambie al autenticarse, y que la
-// autenticación quede guardada en la sesión y no solo en el hilo actual.
+// Los comportamientos de este servicio que ningún script de verificación
+// comprueba: que el identificador de sesión cambie al autenticarse, que la
+// autenticación quede guardada en la sesión y no solo en el hilo actual, y
+// que la sesión del equipo dure menos que la de un cliente.
 // Se usa el repositorio real de Spring, el mismo que define SecurityConfig.
 class SesionAutenticacionServiceTest {
+
+    private static final Duration DOCE_HORAS = Duration.ofHours(12);
 
     private SesionAutenticacionService servicio;
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
-    private Authentication auth;
 
     @BeforeEach
     void setUp() {
-        servicio = new SesionAutenticacionService(new HttpSessionSecurityContextRepository());
+        servicio = new SesionAutenticacionService(new HttpSessionSecurityContextRepository(), DOCE_HORAS);
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
-        auth = UsernamePasswordAuthenticationToken.authenticated(
-                "test@tierra.esquel", null, AuthorityUtils.createAuthorityList("ROLE_CLIENTE"));
     }
 
     @AfterEach
@@ -48,13 +51,15 @@ class SesionAutenticacionServiceTest {
     void conUnaSesionPreviaCambiaElIdentificador() {
         String idAnterior = request.getSession(true).getId();
 
-        servicio.iniciarSesion(auth, request, response);
+        servicio.iniciarSesion(con("ROLE_CLIENTE"), request, response);
 
         assertNotEquals(idAnterior, request.getSession(false).getId());
     }
 
     @Test
     void laAutenticacionQuedaGuardadaEnLaSesion() {
+        Authentication auth = con("ROLE_CLIENTE");
+
         servicio.iniciarSesion(auth, request, response);
 
         HttpSession sesion = request.getSession(false);
@@ -64,5 +69,29 @@ class SesionAutenticacionServiceTest {
         assertNotNull(guardado);
         assertSame(auth, guardado.getAuthentication());
         assertSame(auth, SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void laSesionDelEquipoDuraDoceHorasDeInactividad() {
+        servicio.iniciarSesion(con("ROLE_ADMIN"), request, response);
+        assertEquals(12 * 60 * 60, request.getSession(false).getMaxInactiveInterval());
+
+        MockHttpServletRequest otro = new MockHttpServletRequest();
+        servicio.iniciarSesion(con("ROLE_OPERADOR"), otro, new MockHttpServletResponse());
+        assertEquals(12 * 60 * 60, otro.getSession(false).getMaxInactiveInterval());
+    }
+
+    @Test
+    void laSesionDeUnClienteConservaLaDuracionDelServidor() {
+        int porDefecto = request.getSession(true).getMaxInactiveInterval();
+
+        servicio.iniciarSesion(con("ROLE_CLIENTE"), request, response);
+
+        assertEquals(porDefecto, request.getSession(false).getMaxInactiveInterval());
+    }
+
+    private static Authentication con(String rol) {
+        return UsernamePasswordAuthenticationToken.authenticated(
+                "alguien@tierra.esquel", null, AuthorityUtils.createAuthorityList(rol));
     }
 }

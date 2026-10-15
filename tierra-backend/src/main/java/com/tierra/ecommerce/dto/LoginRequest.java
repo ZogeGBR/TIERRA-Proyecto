@@ -9,8 +9,8 @@ public record LoginRequest(
         @NotBlank(message = "El email es obligatorio") String email,
         @NotBlank(message = "La contraseña es obligatoria") String password
 ) {
-    // Misma normalización que en el registro, o alguien que se registró
-    // desde el celular con la mayúscula automática no podría volver a entrar.
+    // Misma normalización que en todo el sistema, o alguien que escribe su
+    // email desde el celular con la mayúscula automática no podría entrar.
     // La contraseña, igual que allá, se deja intacta.
     public LoginRequest {
         email = email == null ? null : email.trim().toLowerCase();

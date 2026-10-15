@@ -58,6 +58,11 @@ auth:
   intentos-maximos: ${LOGIN_INTENTOS_MAXIMOS:5}
   bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}
 
+  # Inactividad máxima de la sesión del equipo (ADR 0005). La de los
+  # clientes es server.servlet.session.timeout. Formato de duración de
+  # Spring: 12h, 30m, 1d.
+  sesion-equipo: ${SESSION_TIMEOUT_EQUIPO:12h}
+
   # Acceso de clientes por código de seis dígitos (ADR 0005). Los valores
   # por defecto son los que fija el ADR; cambiarlos es una decisión, no un
   # ajuste técnico.

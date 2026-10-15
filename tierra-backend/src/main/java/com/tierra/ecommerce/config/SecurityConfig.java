@@ -112,7 +112,10 @@ public class SecurityConfig {
                     // --- Público: el catálogo tiene que verse sin cuenta ---
                     .requestMatchers(HttpMethod.GET, "/api/productos", "/api/productos/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/alquiler/**").permitAll()
-                    .requestMatchers("/api/auth/registro", "/api/auth/login").permitAll()
+                    // Los dos canales de acceso (ADR 0005). El registro ya no
+                    // existe: los clientes se crean al comprar.
+                    .requestMatchers(HttpMethod.POST, "/api/auth/codigo", "/api/auth/codigo/verificar").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/auth/equipo/login").permitAll()
 
                     // El webhook lo llama Mercado Pago, que no tiene ni puede
                     // tener credenciales nuestras. Su protección es la firma

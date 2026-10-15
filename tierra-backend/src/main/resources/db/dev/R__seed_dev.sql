@@ -118,15 +118,22 @@ INSERT INTO equipos_alquiler (id, tipo_id, marca_id, modelo, talla, numero_serie
 ON CONFLICT (id) DO NOTHING;
 
 -- ---------- USUARIOS DE PRUEBA ----------
--- Los tres tienen la misma contraseña: tierra2026
--- Son hashes BCrypt reales (factor 12). No son secretos: este archivo
--- sólo corre en desarrollo. Ver CONTRIBUTING.md §2.4.
+-- test@ es CLIENTE: no tiene contraseña y entra con un código de seis
+-- dígitos (ADR 0005). En desarrollo el código aparece en el log del backend
+-- y en target/codigos-dev/test@tierra.esquel.txt.
+--
+-- mostrador@ y admin@ son del equipo y entran con la contraseña tierra2026
+-- por /equipo. Son hashes BCrypt reales (factor 12). No son secretos: este
+-- archivo sólo corre en desarrollo. Ver CONTRIBUTING.md §2.4.
+--
+-- La restricción chk_usuarios_metodo_acceso (V8) exige que ningún cliente
+-- tenga contraseña y que todo el equipo la tenga.
 --
 -- El rol del vendedor es OPERADOR (antes STAFF, renombrado en V4 para
 -- que el código hable el mismo idioma que el contrato con el cliente).
 INSERT INTO usuarios (id, nombre, email, password_hash, telefono, dni, rol) VALUES
   ('99000000-0000-0000-0000-000000000001', 'Usuario de Prueba', 'test@tierra.esquel',
-   '$2b$12$Qv9fqdIa.Q14/whqUqYDUe/98nwtxwSbo1cmIGw6hIazXUCwRnbqO', '+54 9 2945 000000', '30111222', 'CLIENTE'),
+   NULL, '+54 9 2945 000000', '30111222', 'CLIENTE'),
   ('99000000-0000-0000-0000-000000000002', 'Vendedor Mostrador', 'mostrador@tierra.esquel',
    '$2b$12$tSKEXG/niOKpVf76/FKRqOtp/cErDuQ.CVFaTUV50z6LBE.QepTiW', '+54 9 2945 000001', '30222333', 'OPERADOR'),
   ('99000000-0000-0000-0000-000000000003', 'Administradora Tierra', 'admin@tierra.esquel',

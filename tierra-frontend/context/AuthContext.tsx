@@ -2,14 +2,18 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api } from "@/lib/api";
-import type { Usuario, RegistroRequest, LoginRequest } from "@/lib/types";
+import type { Usuario, LoginRequest } from "@/lib/types";
 
 interface AuthContextValue {
   usuario: Usuario | null;
   /** true sólo mientras se resuelve la sesión inicial. Ver el comentario en el provider. */
   cargando: boolean;
-  iniciarSesion: (datos: LoginRequest) => Promise<Usuario>;
-  registrar: (datos: RegistroRequest) => Promise<Usuario>;
+  /** Clientes, paso 1. Devuelve el mensaje genérico del backend, que se muestra tal cual. */
+  solicitarCodigo: (email: string) => Promise<string>;
+  /** Clientes, paso 2. Abre la sesión si el código sirve. */
+  verificarCodigo: (email: string, codigo: string) => Promise<Usuario>;
+  /** Equipo de Tierra: email y contraseña, desde /equipo. */
+  iniciarSesionEquipo: (datos: LoginRequest) => Promise<Usuario>;
   cerrarSesion: () => Promise<void>;
 }
 
@@ -40,9 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         // Un 401 acá es lo normal: significa que no hay sesión, no que algo
-        // falló. No hay forma de distinguirlo de un error de red con el
-        // apiFetch actual, y tampoco cambia qué hacer: mostrar el sitio
-        // como visitante.
+        // falló. Un error de red (ApiError con estado 0) tampoco cambia qué
+        // hacer: mostrar el sitio como visitante.
         if (!cancelado) setUsuario(null);
       })
       .finally(() => {
@@ -54,19 +57,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function iniciarSesion(datos: LoginRequest): Promise<Usuario> {
-    // Sin try/catch: el error se propaga para que la pantalla lo muestre.
-    // Atraparlo acá lo haría desaparecer en silencio, que es justamente el
-    // problema que tiene el resto del frontend hoy.
-    const u = await api.auth.login(datos);
+  // En las tres funciones, sin try/catch: el error se propaga para que la
+  // pantalla lo muestre. Atraparlo acá lo haría desaparecer en silencio.
+
+  async function solicitarCodigo(email: string): Promise<string> {
+    // No cambia la sesión: pedir un código no da acceso a nada.
+    const respuesta = await api.auth.solicitarCodigo(email);
+    return respuesta.mensaje;
+  }
+
+  async function verificarCodigo(email: string, codigo: string): Promise<Usuario> {
+    const u = await api.auth.verificarCodigo(email, codigo);
     setUsuario(u);
     return u;
   }
 
-  async function registrar(datos: RegistroRequest): Promise<Usuario> {
-    // El backend deja la sesión iniciada al registrar, así que no hace falta
-    // un login posterior.
-    const u = await api.auth.registrar(datos);
+  async function iniciarSesionEquipo(datos: LoginRequest): Promise<Usuario> {
+    const u = await api.auth.loginEquipo(datos);
     setUsuario(u);
     return u;
   }
@@ -83,7 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, cargando, iniciarSesion, registrar, cerrarSesion }}>
+    <AuthContext.Provider
+      value={{ usuario, cargando, solicitarCodigo, verificarCodigo, iniciarSesionEquipo, cerrarSesion }}
+    >
       {children}
     </AuthContext.Provider>
   );

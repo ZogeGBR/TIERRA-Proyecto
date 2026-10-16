@@ -8,9 +8,42 @@ import type {
   ReservaResponse,
   PreferenciaPago,
   Usuario,
-  RegistroRequest,
-  LoginRequest
+  LoginRequest,
+  MensajeResponse
 } from "./types";
+
+// Error de una llamada a la API, con el código HTTP además del mensaje.
+//
+// El código es lo que permite reaccionar distinto según el caso (un 409 de
+// stock no se maneja igual que un 503 de Mercado Pago) sin comparar el texto
+// del mensaje, que se rompe en silencio el día que alguien lo reescribe en el
+// backend. El mensaje sigue siendo el que se muestra: viene redactado para el
+// usuario final.
+//
+// estado = 0 significa que no hubo respuesta: el backend no está levantado o
+// no hay conexión.
+export class ApiError extends Error {
+  readonly estado: number;
+
+  constructor(mensaje: string, estado: number) {
+    super(mensaje);
+    this.name = "ApiError";
+    this.estado = estado;
+    // Para que `instanceof ApiError` funcione aunque el código se compile a
+    // una versión de JavaScript sin clases nativas.
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+export const MENSAJE_SIN_CONEXION =
+  "No pudimos conectarnos con Tierra. Revisá tu conexión y probá de nuevo.";
+
+// El texto para mostrarle a la persona cuando algo falla. Los mensajes del
+// backend ya vienen redactados para el usuario final; cualquier otra cosa
+// (un error de programación, por ejemplo) se reemplaza por el texto dado.
+export function mensajeDeError(error: unknown, porDefecto: string): string {
+  return error instanceof ApiError ? error.message : porDefecto;
+}
 
 function getApiUrl(): string {
   if (typeof window === "undefined") {
@@ -75,22 +108,29 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     if (token) headers["X-XSRF-TOKEN"] = token;
   }
 
-  const res = await fetch(`${getApiUrl()}${path}`, {
-    // Sin esto, Next.js cachea agresivamente las respuestas de fetch en el
-    // servidor (incluso en desarrollo) — un catálogo con stock cambiante
-    // nunca debería servir una respuesta vieja guardada en caché.
-    cache: "no-store",
-    // La cookie de sesión viaja entre orígenes distintos (3000 -> 8080) sólo
-    // con esto. Sin "include", el navegador la descarta en silencio: el login
-    // devuelve 200, el Set-Cookie llega, y la cookie no se guarda.
-    credentials: "include",
-    ...options,
-    headers
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiUrl()}${path}`, {
+      // Sin esto, Next.js cachea agresivamente las respuestas de fetch en el
+      // servidor (incluso en desarrollo) — un catálogo con stock cambiante
+      // nunca debería servir una respuesta vieja guardada en caché.
+      cache: "no-store",
+      // La cookie de sesión viaja entre orígenes distintos (3000 -> 8080) sólo
+      // con esto. Sin "include", el navegador la descarta en silencio: el login
+      // devuelve 200, el Set-Cookie llega, y la cookie no se guarda.
+      credentials: "include",
+      ...options,
+      headers
+    });
+  } catch {
+    // fetch sólo falla así cuando no hubo respuesta. Su mensaje propio
+    // ("Failed to fetch") no le dice nada a quien está comprando.
+    throw new ApiError(MENSAJE_SIN_CONEXION, 0);
+  }
 
   if (!res.ok) {
     const cuerpo = await res.json().catch(() => null);
-    throw new Error(cuerpo?.mensaje ?? `Error ${res.status} al llamar a ${path}`);
+    throw new ApiError(cuerpo?.mensaje ?? `Error ${res.status} al llamar a ${path}`, res.status);
   }
 
   // 201/204 sin body
@@ -100,14 +140,24 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   auth: {
-    registrar: (request: RegistroRequest) =>
-      apiFetch<Usuario>("/auth/registro", { method: "POST", body: JSON.stringify(request) }),
-    login: (request: LoginRequest) =>
-      apiFetch<Usuario>("/auth/login", { method: "POST", body: JSON.stringify(request) }),
+    // Clientes (ADR 0005). La respuesta es SIEMPRE el mismo mensaje genérico,
+    // exista el email o no: el frontend lo muestra tal cual y no intenta
+    // adivinar nada. Sólo un email con formato inválido da error (400).
+    solicitarCodigo: (email: string) =>
+      apiFetch<MensajeResponse>("/auth/codigo", { method: "POST", body: JSON.stringify({ email }) }),
+    // 401 con un mensaje genérico si el código no sirve, por el motivo que sea.
+    verificarCodigo: (email: string, codigo: string) =>
+      apiFetch<Usuario>("/auth/codigo/verificar", {
+        method: "POST",
+        body: JSON.stringify({ email, codigo })
+      }),
+    // Equipo: email y contraseña. 401 si no coinciden, 423 si la cuenta quedó
+    // bloqueada por intentos fallidos.
+    loginEquipo: (request: LoginRequest) =>
+      apiFetch<Usuario>("/auth/equipo/login", { method: "POST", body: JSON.stringify(request) }),
     // Responde 204 sin cuerpo, por eso el tipo es void.
     logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
-    // Devuelve 401 si no hay sesión, y apiFetch lo convierte en un Error.
-    // Quien lo llame tiene que distinguir "no hay sesión" de "falló la red".
+    // Devuelve 401 si no hay sesión: un ApiError con estado 401.
     yo: () => apiFetch<Usuario>("/auth/yo")
   },
   productos: {

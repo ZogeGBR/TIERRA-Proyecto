@@ -80,9 +80,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
     }
 
-    @ExceptionHandler(EmailYaRegistradoException.class)
-    public ResponseEntity<ErrorResponse> handleEmailDuplicado(EmailYaRegistradoException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+    // Código de acceso que no sirve, por la razón que sea. 401 con el mismo
+    // mensaje siempre: ver CodigoInvalidoException y el ADR 0005.
+    @ExceptionHandler(CodigoInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleCodigoInvalido(CodigoInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
     }
 
     // Errores de validación de los DTO. Sin este handler caían en el genérico

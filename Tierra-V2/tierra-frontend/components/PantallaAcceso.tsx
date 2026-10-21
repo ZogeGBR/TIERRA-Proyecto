@@ -14,7 +14,9 @@ export function PantallaAcceso({ titulo, subtitulo, children }: { titulo: string
         style={{ objectPosition: "60% 35%" }}
       />
       <div className="absolute inset-0 bg-gradient-to-b from-tierra-terracota-oscuro/70 via-tierra-terracota-oscuro/50 to-tierra-crema-oscuro/80" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-tierra-verde/40 blur-3xl" />
+      {/* Dos luces de color que flotan despacio detrás de la tarjeta (solo transform). */}
+      <div aria-hidden="true" className="orbe orbe-a absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-tierra-verde/40 blur-3xl" />
+      <div aria-hidden="true" className="orbe orbe-b absolute -top-28 -left-24 w-80 h-80 rounded-full bg-tierra-ambar/35 blur-3xl" />
 
       <div className="relative w-full max-w-md anim-sube">
         <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl p-8 shadow-2xl">

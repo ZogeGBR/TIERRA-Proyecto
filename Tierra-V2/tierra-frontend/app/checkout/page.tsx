@@ -1,5 +1,6 @@
 "use client";
 
+import { TituloPalabras } from "@/components/TituloPalabras";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ShoppingBag, Store, Truck, Check, ArrowLeft } from "lucide-react";
@@ -371,7 +372,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Proceso de compra</h1>
+      <TituloPalabras como="h1" texto="Proceso de compra" destacar="compra" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6" />
 
       {/* Indicador de pasos: se puede volver a los ya completados. */}
       <ol className="flex items-center gap-2 mb-8 text-sm" aria-label="Pasos de la compra">

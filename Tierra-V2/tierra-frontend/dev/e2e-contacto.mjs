@@ -35,17 +35,20 @@ await caso("Menú Contacto lleva al bloque de contacto del pie", async (p) => {
   ok(await p.locator("#contacto").isVisible(), "no se ve el contacto");
 });
 for (const ancho of [400, 1280, 1920]) {
-  await caso(`Banda "Somos Tierra" (${ancho}px): solo el dibujo de la cordillera de siempre, quieto, sin ondas ni scroll horizontal`, async (p) => {
+  await caso(`Banda "Somos Tierra" (${ancho}px): la cordillera ocupa todo el ancho y llega al pie de página, quieta, sin ondas ni scroll horizontal`, async (p) => {
     await ir(p, "/");
     const r = await p.evaluate(() => {
-      const img = document.querySelector('img[src="/images/brand/cordillera.png"]');
-      const banda = img?.closest("section");
-      return { hay: !!img, ondas: banda ? banda.querySelectorAll(".olas").length : -1, anim: banda ? getComputedStyle(banda).animationName : "", lamina: !!document.querySelector(".banda-somos-montana"),
-               ondasFooter: document.querySelectorAll("footer .olas").length, video: document.querySelectorAll("footer video, section video").length };
+      const c = document.querySelector("[data-banda-cordillera] .cordillera-banda");
+      const banda = c?.closest("section");
+      const b = banda?.getBoundingClientRect(), f = document.querySelector("footer").getBoundingClientRect();
+      return { hay: !!c, izq: b?.left, der: b?.right, iw: innerWidth, hueco: f.top - (b?.bottom ?? 0), ondas: banda ? banda.querySelectorAll(".olas").length : -1, anim: banda ? getComputedStyle(banda).animationName : "",
+               img: c ? getComputedStyle(c).backgroundImage : "", ondasFooter: document.querySelectorAll("footer .olas").length, video: document.querySelectorAll("footer video, [data-banda-cordillera] video").length };
     });
-    ok(r.hay, "falta el dibujo original de la cordillera");
-    ok(r.ondas === 0 && r.ondasFooter === 0, "no debe haber ondas en la banda ni en el footer");
-    ok(r.anim === "none" && !r.lamina, "la banda no debe animarse ni usar la lámina espejada: " + r.anim);
+    ok(r.hay && /cordillera-panorama/.test(r.img), "falta la cordillera a todo el ancho: " + r.img);
+    ok(Math.abs(r.izq) < 1 && Math.abs(r.der - r.iw) < 1.5, `la banda no llega a los bordes: ${r.izq}..${r.der} de ${r.iw}`);
+    ok(r.hueco <= 1, "hueco entre la banda y el pie de página: " + r.hueco);
+    ok(r.ondas === 0 && r.ondasFooter === 0 && r.video === 0, "no debe haber ondas ni video en la banda ni en el footer");
+    ok(r.anim === "none", "la banda no debe animarse: " + r.anim);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "scroll horizontal");
   }, { ancho });
 }

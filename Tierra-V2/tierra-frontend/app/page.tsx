@@ -1,3 +1,4 @@
+import { TituloPalabras } from "@/components/TituloPalabras";
 import Link from "next/link";
 import { Backpack, Snowflake, Truck, CreditCard, Award, Headphones } from "lucide-react";
 import { CategoryCard } from "@/components/CategoryCard";
@@ -49,9 +50,12 @@ export default async function HomePage() {
       </section>
 
       <TarjetaFija>
-            <h1 className="font-serif text-4xl md:text-5xl font-semibold text-tierra-terracota-oscuro leading-tight drop-shadow-sm">
-              Equipos para tus aventuras en la montaña
-            </h1>
+            <TituloPalabras
+              como="h1"
+              texto="Equipos para tus aventuras en la montaña"
+              destacar="aventuras"
+              className="font-serif text-4xl md:text-5xl font-semibold text-tierra-terracota-oscuro leading-tight drop-shadow-sm"
+            />
             <p className="mt-4 text-tierra-terracota-oscuro/90 drop-shadow-sm">
               Todo lo que necesitás para explorar sin límites.
             </p>
@@ -98,7 +102,7 @@ export default async function HomePage() {
         <section className="papel-central">
           <div className="contenido-catalogo">
             <section className="seccion">
-              <h2 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Categorías</h2>
+              <TituloPalabras como="h2" modo="scroll" texto="Categorías" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6" />
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {categorias.map((cat, i) => (
                   <Revelar key={cat.id} retraso={i * 70}>
@@ -120,16 +124,13 @@ export default async function HomePage() {
       </div>
 
       {/* Banda "Somos Tierra": fondo quieto y el dibujo de la cordillera de siempre. */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-tierra-ambar/20 via-tierra-crema-oscuro to-tierra-verde/15">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/brand/cordillera.png"
-          alt=""
-          className="hidden md:block absolute right-0 bottom-0 w-1/2 h-full object-cover object-bottom opacity-70"
-        />
+      <section data-banda-cordillera className="relative overflow-hidden bg-gradient-to-br from-tierra-ambar/25 via-tierra-crema-oscuro to-tierra-verde/15">
+        <div className="cordillera-banda" aria-hidden="true" />
+        {/* Velo suave detrás del texto para que se lea sobre el dibujo */}
+        <div className="pointer-events-none absolute inset-0 velo-lectura" aria-hidden="true" />
         <div className="relative max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/brand/sello.png" alt="Sello Tierra" className="w-24 h-24 shrink-0" />
+          <img src="/images/brand/sello.png" alt="Sello Tierra" className="w-24 h-24 shrink-0 mix-blend-multiply" />
           <div className="flex-1 text-center md:text-left">
             <p className="font-serif text-2xl font-semibold uppercase text-tierra-terracota-oscuro">Somos Tierra</p>
             <p className="mt-1 text-tierra-terracota-oscuro/80">
@@ -137,9 +138,9 @@ export default async function HomePage() {
               sea una experiencia única.
             </p>
           </div>
-          <a href="#" className="btn-primario whitespace-nowrap">
+          <Link href="/sobre-tierra" className="btn-primario whitespace-nowrap">
             Conocenos
-          </a>
+          </Link>
         </div>
       </section>
     </div>

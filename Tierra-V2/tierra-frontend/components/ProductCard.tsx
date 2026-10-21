@@ -1,3 +1,4 @@
+import { Inclinar } from "@/components/Inclinar";
 import { rutaDeProducto } from "@/lib/rutas";
 import Link from "next/link";
 import { Mountain, ShoppingCart } from "lucide-react";
@@ -12,12 +13,12 @@ import type { ProductoResumen } from "@/lib/types";
 // el backend exponga una variante por defecto, que quedó fuera de esta tarea.
 export function ProductCard({ producto }: { producto: ProductoResumen }) {
   return (
-    <div className="group relative">
+    <Inclinar className="group relative h-full">
       <Link
         href={rutaDeProducto(producto)}
-        className="block rounded-xl overflow-hidden bg-white shadow-sm transition-all duration-200 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-tierra-verde focus:ring-offset-2"
+        className="flex h-full flex-col rounded-xl overflow-hidden bg-white shadow-sm transition-all duration-200 hover:shadow-xl hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-tierra-verde focus:ring-offset-2"
       >
-        <div className="aspect-square bg-tierra-crema-oscuro overflow-hidden">
+        <div className="aspect-square shrink-0 bg-tierra-crema-oscuro overflow-hidden">
           {producto.imagenPrincipal ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -33,10 +34,10 @@ export function ProductCard({ producto }: { producto: ProductoResumen }) {
             </div>
           )}
         </div>
-        <div className="p-3.5">
-          <p className="text-[11px] uppercase tracking-wide text-tierra-terracota font-medium">{producto.marca}</p>
-          <p className="mt-0.5 font-medium text-tierra-terracota-oscuro leading-snug">{producto.nombre}</p>
-          <p className="mt-1.5 text-lg font-bold text-tierra-terracota-oscuro">
+        <div className="flex flex-1 flex-col p-3.5">
+          <p className="truncate text-[11px] uppercase tracking-wide text-tierra-terracota font-medium">{producto.marca}</p>
+          <p className="mt-0.5 line-clamp-2 min-h-[2.75rem] font-medium text-tierra-terracota-oscuro leading-snug" title={producto.nombre}>{producto.nombre}</p>
+          <p className="mt-auto pt-1.5 text-lg font-bold text-tierra-terracota-oscuro">
             ${producto.precio.toLocaleString("es-AR")}
           </p>
         </div>
@@ -53,6 +54,6 @@ export function ProductCard({ producto }: { producto: ProductoResumen }) {
       >
         <ShoppingCart size={16} />
       </Link>
-    </div>
+    </Inclinar>
   );
 }

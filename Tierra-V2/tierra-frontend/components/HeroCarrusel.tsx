@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { usePrefiereMovimientoReducido } from "@/lib/movimientoReducido";
 
@@ -34,17 +34,7 @@ export function HeroCarrusel() {
   // solo ni hace el zoom lento: queda en la primera foto y se cambia a mano.
   const movimientoReducido = usePrefiereMovimientoReducido();
   const detenido = enPausa || pausaManual || movimientoReducido;
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (detenido) return;
-    timerRef.current = setInterval(() => {
-      setIndice((i) => (i + 1) % SLIDES.length);
-    }, INTERVALO_MS);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [detenido]);
+  const inicioToque = useRef<number | null>(null);
 
   function irA(i: number) {
     setIndice((i + SLIDES.length) % SLIDES.length);
@@ -57,6 +47,18 @@ export function HeroCarrusel() {
       onMouseLeave={() => setEnPausa(false)}
       onFocus={() => setEnPausa(true)}
       onBlur={() => setEnPausa(false)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") irA(indice - 1);
+        if (e.key === "ArrowRight") irA(indice + 1);
+      }}
+      onPointerDown={(e) => { inicioToque.current = e.clientX; }}
+      onPointerUp={(e) => {
+        const x0 = inicioToque.current;
+        inicioToque.current = null;
+        if (x0 === null) return;
+        const dx = e.clientX - x0;
+        if (Math.abs(dx) > 50) irA(indice + (dx < 0 ? 1 : -1));
+      }}
       role="region"
       aria-roledescription="carrusel"
       aria-label="Fotos de Tierra"
@@ -115,16 +117,31 @@ export function HeroCarrusel() {
         </button>
       )}
 
+      {/* Barras de progreso estilo "stories": la de la foto actual se llena en
+          el tiempo exacto que falta para el cambio (como en el reel de F97).
+          Se frena sola con la pausa y con "reducir movimiento" queda llena. */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {SLIDES.map((_, i) => (
           <button
             key={i}
             onClick={() => irA(i)}
             aria-label={`Ver foto ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${
-              i === indice ? "w-6 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"
-            }`}
-          />
+            aria-current={i === indice ? "true" : undefined}
+            className="group relative h-6 w-9 flex items-center focus:outline-none"
+          >
+            <span className="relative block h-1 w-full overflow-hidden rounded-full bg-white/45 transition-[height,background-color] duration-200 group-hover:h-1.5 group-hover:bg-white/70 group-focus-visible:ring-2 group-focus-visible:ring-white">
+              <span
+                key={`${indice}-${i === indice}`}
+                className={`absolute inset-y-0 left-0 block w-full origin-left rounded-full bg-white ${i === indice && !movimientoReducido ? "hero-progreso" : ""}`}
+                onAnimationEnd={i === indice ? () => irA(indice + 1) : undefined}
+                style={{
+                  transform: i < indice || (i === indice && movimientoReducido) ? "scaleX(1)" : i === indice ? undefined : "scaleX(0)",
+                  animationDuration: `${INTERVALO_MS}ms`,
+                  animationPlayState: detenido ? "paused" : "running"
+                }}
+              />
+            </span>
+          </button>
         ))}
       </div>
     </div>

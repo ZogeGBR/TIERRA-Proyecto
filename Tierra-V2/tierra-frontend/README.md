@@ -25,6 +25,7 @@ Next.js 14.2.35 (App Router) + TypeScript + Tailwind, consumiendo la API de `tie
 | `npm run backend-falso` | Backend de mentira en `:8080` que cumple el contrato de la Fase 2 (para desarrollar sin el real). |
 | `node dev/e2e.mjs` | E2E en Chromium contra el backend falso (necesita `playwright`; ver cabecera del archivo). |
 | `node dev/e2e-develop.mjs` | Frontend contra un backend que se comporta como `develop` (rutas nuevas ausentes, catálogo lista simple). |
+| `node dev/e2e-fluidez.mjs` | Tarjetas del mismo tamaño, página Sobre Tierra y fluidez: header de vidrio sin saltos, barra de progreso, titulares por palabra, hero con barras, flechas del carrusel, tarjetas con profundidad, luz del cursor, movimiento reducido, fps. |
 | `node dev/e2e-home.mjs` | Home: video de ondas, sombreado del borde, tarjeta del hero quieta y carrusel de más vendidos / más buscados. |
 
 Para probar contra el backend falso: `NEXT_PUBLIC_CATALOGO_DE_PRUEBA=0 NEXT_PUBLIC_API_URL=http://localhost:8080/api npm run build && npm start`.
@@ -38,3 +39,9 @@ Sin internet para Google Fonts: `NEXT_FONT_GOOGLE_MOCKED_RESPONSES=$PWD/dev/fuen
 - Animaciones: `app/template.tsx` (fundido por pantalla), `.grilla-anim` (escalonado), `components/Nieve.tsx` + `.tema-invierno` (alquiler). Pruebas: `node dev/e2e-animaciones.mjs`.
 - Temas por ruta: `app/template.tsx` marca `data-ruta-tema` (invierno / tierra) y `globals.css` lo lee con `body:has(...)` (header, footer, fondo).
 - Contacto real en `lib/contacto.ts` (WhatsApp +54 9 2945 699751, tierra.esquel@gmail.com, instagram.com/tierra.esquel; sin Facebook). Videos de fondo por ruta en `app/template.tsx` (`VideoFondo`). Banda "Somos Tierra" y footer: solo el dibujo de la cordillera (sin ondas ni video). Pruebas: `node dev/e2e-contacto.mjs`.
+
+## Lenguaje de movimiento (ronda de fluidez)
+- Variables en `app/globals.css`: `--ease-salida`, `--ease-vaiven`, `--t-micro`, `--t-bloque`. Todo se anima solo con `transform`/`opacity`.
+- `components/TituloPalabras.tsx` (titulares por palabra, modo `carga` o `scroll`), `BarraProgreso.tsx` (hilo de lectura), `LuzCursor.tsx` (resplandor del mouse), `Inclinar.tsx` (profundidad en tarjetas), header con vidrio (`Header.tsx`, altura fija: sin saltos de contenido).
+- Carruseles: `CarruselProductos` usa un bucle con física (frenado gradual, flechas con desaceleración, inercia al soltar); `HeroCarrusel` cambia de foto cuando se llena la barra de progreso (se pausa sola).
+- Todo respeta `prefers-reduced-motion`; luz e inclinación solo con mouse.

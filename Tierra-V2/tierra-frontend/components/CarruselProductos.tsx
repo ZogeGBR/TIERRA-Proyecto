@@ -1,5 +1,6 @@
 "use client";
 
+import { TituloPalabras } from "@/components/TituloPalabras";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
@@ -48,6 +49,10 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
   const posicion = useRef(0); // px recorridos dentro de una lista
   const anchoLista = useRef(0);
   const arrastre = useRef<{ x: number; pos: number } | null>(null);
+  const restante = useRef(0); // px que faltan para llegar al destino de una flecha (se consumen suavemente)
+  const inercia = useRef(0); // px/s que quedan tras soltar un arrastre (se frena sola)
+  const factor = useRef(1); // 0 = frenado, 1 = velocidad normal; cambia con suavidad, sin tirones
+  const ultimoMov = useRef<{ x: number; t: number } | null>(null);
   const huboArrastre = useRef(false); // para que el clic que sigue a un arrastre no abra el producto
   const [pausaManual, setPausaManual] = useState(false);
   const [encima, setEncima] = useState(false); // mouse o foco adentro
@@ -121,8 +126,26 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
       // Tope de 64 ms: si la pestaña estuvo dormida no se "salta" de golpe.
       const dt = Math.min(ahora - anterior, 64) / 1000;
       anterior = ahora;
-      if (visible && !enPausaRef.current) {
-        posicion.current += VELOCIDAD_PX_POR_SEG * dt;
+      if (visible) {
+        // Frenar y arrancar con suavidad (al pasar el mouse o al soltar), no de golpe.
+        const meta = enPausaRef.current ? 0 : 1;
+        factor.current += (meta - factor.current) * (1 - Math.exp(-dt * 5));
+        posicion.current += VELOCIDAD_PX_POR_SEG * factor.current * dt;
+        // Empujón de las flechas: se recorre con desaceleración exponencial.
+        if (restante.current !== 0) {
+          const d = restante.current * (1 - Math.exp(-dt * 7));
+          posicion.current += d;
+          restante.current -= d;
+          if (Math.abs(restante.current) < 0.4) {
+            posicion.current += restante.current;
+            restante.current = 0;
+          }
+        }
+        // Inercia tras arrastrar con el dedo o el mouse.
+        if (!arrastre.current && Math.abs(inercia.current) > 6) {
+          posicion.current += inercia.current * dt;
+          inercia.current *= Math.exp(-dt * 3.2);
+        }
       }
       aplicar();
       raf = requestAnimationFrame(cuadro);
@@ -149,28 +172,18 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
   }, [tipo, seMueveSolo]);
 
   function empujar(dir: -1 | 1) {
-    const el = marco.current;
-    if (!el) return;
-    // Un "pasito" de ~3 tarjetas, animado con transición corta sobre transform.
-    const paso = dir * 212 * 3;
-    const cintaEl = cinta.current;
-    if (cintaEl) {
-      cintaEl.style.transition = "transform 450ms cubic-bezier(0.22, 0.61, 0.36, 1)";
-      posicion.current += paso;
-      const ancho = anchoLista.current || 1;
-      // Se aplica el módulo ya, para que la transición no cruce el salto del bucle.
-      const destino = ((posicion.current % ancho) + ancho) % ancho;
-      posicion.current = destino;
-      cintaEl.style.transform = `translate3d(${-destino}px,0,0)`;
-      window.setTimeout(() => {
-        if (cintaEl) cintaEl.style.transition = "";
-      }, 480);
-    }
+    // Un "pasito" de ~3 tarjetas. El bucle de animación lo recorre con una
+    // desaceleración suave (acumulable: apretar dos veces seguidas suma).
+    restante.current += dir * 212 * 3;
+    inercia.current = 0;
   }
 
   function alPresionar(e: React.PointerEvent) {
     if (!seMueveSolo) return;
     arrastre.current = { x: e.clientX, pos: posicion.current };
+    ultimoMov.current = { x: e.clientX, t: performance.now() };
+    inercia.current = 0;
+    restante.current = 0;
     huboArrastre.current = false;
   }
   function alMover(e: React.PointerEvent) {
@@ -182,10 +195,21 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
       setArrastrando(true);
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     }
-    if (huboArrastre.current) posicion.current = a.pos - dx;
+    if (huboArrastre.current) {
+      posicion.current = a.pos - dx;
+      const u = ultimoMov.current;
+      const ahora = performance.now();
+      if (u && ahora > u.t) {
+        const v = -((e.clientX - u.x) / (ahora - u.t)) * 1000; // px/s, signo de avance
+        inercia.current = inercia.current * 0.6 + Math.max(-2500, Math.min(2500, v)) * 0.4;
+      }
+      ultimoMov.current = { x: e.clientX, t: ahora };
+    }
   }
   function alSoltar() {
     arrastre.current = null;
+    ultimoMov.current = null;
+    if (!huboArrastre.current) inercia.current = 0;
     setArrastrando(false);
   }
 
@@ -203,9 +227,7 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
   return (
     <section className="seccion" aria-labelledby={`${id}-titulo`}>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-        <h2 id={`${id}-titulo`} className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro">
-          Lo que más se elige
-        </h2>
+        <TituloPalabras como="h2" modo="scroll" id={`${id}-titulo`} texto="Lo que más se elige" destacar="más se elige" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro" />
 
         <div className="flex items-center gap-3">
           {visibles.length > 1 && (
@@ -311,7 +333,7 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
                   inert={copia === 1 ? INERT : undefined}
                 >
                   {lista.map((p, i) => (
-                    <div key={`${p.id}-${i}`} className="w-48 shrink-0 mr-5">
+                    <div key={`${p.id}-${i}`} className="w-48 shrink-0 mr-5 [&>*]:h-full">
                       <ProductCard producto={p} />
                     </div>
                   ))}
@@ -328,7 +350,7 @@ function CarruselConProductos({ listas }: { listas: Record<TipoRanking, Producto
             className="carrusel-productos flex gap-5 overflow-x-auto snap-x snap-mandatory pb-4 -mx-1 px-1 anim-sube"
           >
             {productos.map((p) => (
-              <div key={p.id} className="w-48 shrink-0 snap-start">
+              <div key={p.id} className="w-48 shrink-0 snap-start [&>*]:h-full">
                 <ProductCard producto={p} />
               </div>
             ))}

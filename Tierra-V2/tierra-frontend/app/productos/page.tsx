@@ -1,3 +1,4 @@
+import { TituloPalabras } from "@/components/TituloPalabras";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,9 +46,12 @@ export default async function CatalogoPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      <h1 className="mb-6 font-serif text-2xl font-semibold text-tierra-terracota-oscuro md:text-3xl">
-        {filtros.q ? `Resultados para “${filtros.q}”` : "Catálogo"}
-      </h1>
+      <TituloPalabras
+        como="h1"
+        texto={filtros.q ? `Resultados para “${filtros.q}”` : "Catálogo"}
+        destacar={filtros.q ? undefined : "Catálogo"}
+        className="mb-6 font-serif text-2xl font-semibold text-tierra-terracota-oscuro md:text-3xl"
+      />
 
       {USAR_CATALOGO_DE_PRUEBA && (
         <div

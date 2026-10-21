@@ -561,3 +561,110 @@ body:has([data-ruta-tema="invierno"]) { --ola-1: rgba(120, 175, 220, 0.30); --ol
   width: max-content;
   will-change: transform;
 }
+
+/* ---- Hero: barra de progreso de cada foto (dispara el cambio al terminar) ---- */
+@keyframes heroProgreso { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.hero-progreso { animation-name: heroProgreso; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+/* =====================================================================
+   Ronda "fluidez": lenguaje de movimiento común (inspirado en la calidad de
+   la web y el reel de F97). Todo solo con transform/opacity.
+   ===================================================================== */
+:root {
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);   /* entradas: arranca rápido y se posa */
+  --ease-vaiven: cubic-bezier(0.65, 0, 0.35, 1);  /* idas y vueltas */
+  --t-micro: 200ms;
+  --t-bloque: 520ms;
+}
+
+/* Titulares por palabra (TituloPalabras) */
+.pal { display: inline-block; will-change: transform, opacity; }
+[data-pal="carga"] .pal { animation: palabraEntra 0.7s var(--ease-salida) both; }
+[data-pal="oculto"] .pal { opacity: 0; transform: translate3d(0, 0.6em, 0); }
+[data-pal="listo"] .pal { animation: palabraEntra 0.7s var(--ease-salida) both; }
+.pal-acento { font-style: italic; color: #B8571F; }
+body:has([data-ruta-tema="invierno"]) .pal-acento { color: #2f6f9f; }
+body:has([data-ruta-tema="tierra"]) h1 .pal-acento, body:has([data-ruta-tema="tierra"]) h2 .pal-acento { color: #2B5F4E; }
+@keyframes palabraEntra { from { opacity: 0; transform: translate3d(0, 0.6em, 0); } to { opacity: 1; transform: none; } }
+
+/* Hilo de progreso de lectura, arriba de todo */
+.barra-progreso {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 60;
+  transform: scaleX(0); transform-origin: left; opacity: 0;
+  background: linear-gradient(90deg, #2B5F4E, #E08A2B 55%, #B8571F);
+  transition: opacity 0.25s ease; pointer-events: none;
+}
+body:has([data-ruta-tema="invierno"]) .barra-progreso { background: linear-gradient(90deg, #9cc7ea, #2f6f9f 60%, #1f4062); }
+
+/* Resplandor que acompaña al cursor */
+.luz-cursor {
+  position: fixed; top: 0; left: 0; width: 520px; height: 520px; z-index: 5; pointer-events: none;
+  opacity: 0; transition: opacity 0.4s ease; will-change: transform;
+  background: radial-gradient(circle at center, rgba(224, 138, 43, 0.16), rgba(224, 138, 43, 0.06) 40%, transparent 68%);
+}
+body:has([data-ruta-tema="invierno"]) .luz-cursor { background: radial-gradient(circle at center, rgba(120, 175, 225, 0.22), rgba(120, 175, 225, 0.08) 40%, transparent 68%); }
+body:has([data-ruta-tema="tierra"]) .luz-cursor { background: radial-gradient(circle at center, rgba(43, 95, 78, 0.14), rgba(224, 138, 43, 0.07) 40%, transparent 68%); }
+@media (hover: none), (pointer: coarse) { .luz-cursor { display: none; } }
+
+/* Tarjetas con profundidad */
+.inclinar { --rx: 0deg; --ry: 0deg; transform: perspective(800px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 0.35s var(--ease-salida); }
+.inclinar:hover { transition-duration: 0.12s; }
+@media (hover: none), (pointer: coarse) { .inclinar { transform: none; } }
+
+/* Header: la barra pasa a vidrio al bajar (la altura NO cambia: sin saltos de contenido) */
+.header-barra { transition: box-shadow 0.35s ease, background-color 0.35s ease; }
+.header-logo img { transition: transform 0.35s var(--ease-salida); transform-origin: left center; }
+[data-compacto="si"] .header-barra { background-color: rgba(255, 255, 255, 0.78); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); box-shadow: 0 10px 30px -14px rgba(70, 45, 25, 0.35); }
+[data-compacto="si"] .header-logo img { transform: scale(0.88); }
+
+/* Subrayado que se dibuja en los enlaces de navegación */
+.enlace-nav { position: relative; }
+.enlace-nav::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 2px; border-radius: 2px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 0.35s var(--ease-salida); }
+.enlace-nav:hover::after, .enlace-nav.enlace-activo::after { transform: scaleX(1); }
+.enlace-activo { color: #B8571F; }
+
+/* Feedback al tocar: todo "responde" */
+button:not(:disabled), a.btn-primario, a.btn-secundario { transition-property: transform, background-color, color, box-shadow, opacity, border-color; }
+button:active:not(:disabled), a.btn-primario:active, a.btn-secundario:active { scale: 0.96; }
+
+/* Entradas más finas con la curva de salida */
+.anim-sube { animation-timing-function: var(--ease-salida); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-pal] .pal { opacity: 1 !important; transform: none !important; }
+  .inclinar { transform: none !important; }
+  .luz-cursor { display: none; }
+  .header-barra, .header-logo img, .enlace-nav::after { transition: none; }
+}
+
+/* Luces flotantes de las pantallas de acceso */
+.orbe { will-change: transform; }
+.orbe-a { animation: orbeFlota 16s var(--ease-vaiven) infinite alternate; }
+.orbe-b { animation: orbeFlota 21s var(--ease-vaiven) infinite alternate-reverse; }
+@keyframes orbeFlota { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-70px, -50px, 0) scale(1.18); } }
+
+/* ---- Cordillera a todo el ancho (panorama sin espejar, sin cortes) ---- */
+.cordillera-banda {
+  position: absolute; inset: 0; pointer-events: none;
+  background: url("/images/brand/cordillera-panorama.jpg") center bottom / cover no-repeat;
+  mix-blend-mode: multiply; opacity: 0.8;
+}
+/* Si la página termina en una banda con cordillera, queda pegada al pie de página (sin franja beige) */
+body:has([data-banda-cordillera]) footer { margin-top: 0; }
+
+/* ---- Caminos de colores de fondo ---- */
+.caminos-colores { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.caminos-colores .camino { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.caminos-colores[data-visto="no"] .camino { stroke-dashoffset: 1; }
+.caminos-colores[data-visto="si"] .camino { animation: caminoSeDibuja 2.4s var(--ease-salida) both; }
+.caminos-colores .camino-parada { transform-box: fill-box; transform-origin: center; }
+.caminos-colores[data-visto="no"] .camino-parada { opacity: 0; }
+.caminos-colores[data-visto="si"] .camino-parada { animation: paradaAparece 0.6s var(--ease-salida) both; }
+.caminos-mece { animation: caminosMecen 18s var(--ease-vaiven) infinite alternate; will-change: transform; }
+@keyframes caminoSeDibuja { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes paradaAparece { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
+@keyframes caminosMecen { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-24px, 10px, 0); } }
+@media (prefers-reduced-motion: reduce) { .caminos-mece { animation: none; } }
+
+.velo-lectura { background: radial-gradient(ellipse 55% 95% at 48% 50%, rgba(247, 236, 221, 0.78), rgba(247, 236, 221, 0) 100%); }
+.velo-centro { background: radial-gradient(ellipse 42% 62% at 50% 50%, rgba(247, 236, 221, 0.92), rgba(247, 236, 221, 0) 100%); }

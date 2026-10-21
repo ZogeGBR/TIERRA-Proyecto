@@ -1,3 +1,5 @@
+import { BarraProgreso } from "@/components/BarraProgreso";
+import { LuzCursor } from "@/components/LuzCursor";
 import type { Metadata } from "next";
 import { Fraunces, Work_Sans } from "next/font/google";
 import "./globals.css";
@@ -35,6 +37,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             sesión (vaciarse al cerrarla), no al revés. */}
         <AuthProvider>
           <CartProvider>
+            <BarraProgreso />
+            <LuzCursor />
             <Header />
             <main className="min-h-screen">{children}</main>
             <Footer />

@@ -1,5 +1,6 @@
 "use client";
 
+import { TituloPalabras } from "@/components/TituloPalabras";
 import { useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, X, ShoppingBag } from "lucide-react";
@@ -46,9 +47,7 @@ export default function CarritoPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">
-        Carrito de compras
-      </h1>
+      <TituloPalabras como="h1" texto="Carrito de compras" destacar="compras" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6" />
 
       <PagoSinTerminar />
 

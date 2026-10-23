@@ -328,6 +328,20 @@ class PagoServiceTest {
         }
 
         @Test
+        void regresoAutomaticoSoloConUrlHttps() throws Exception {
+            when(properties.getUrlExito()).thenReturn("http://localhost:3000/checkout/exito");
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
+
+            when(properties.getUrlExito()).thenReturn("https://tierra.com.ar/checkout/exito");
+            pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
+
+            ArgumentCaptor<PreferenceRequest> captor = ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(preferenceClient, times(2)).create(captor.capture());
+            assertNull(captor.getAllValues().get(0).getAutoReturn(), "localhost: Mercado Pago rechaza auto_return");
+            assertEquals("approved", captor.getAllValues().get(1).getAutoReturn());
+        }
+
+        @Test
         void apretarPagarVariasVecesNoCreaPagosPendientesDuplicados() {
             pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());
             pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());

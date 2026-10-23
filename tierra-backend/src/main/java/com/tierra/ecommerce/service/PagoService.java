@@ -162,7 +162,12 @@ public class PagoService {
             PreferenceRequest request = PreferenceRequest.builder()
                     .items(List.of(item))
                     .backUrls(backUrls)
-                    .autoReturn("approved")
+                    // auto_return devuelve al cliente a Tierra solo, después de un pago
+                    // aprobado. Mercado Pago lo rechaza si la URL de éxito no es pública
+                    // (por ejemplo http://localhost en desarrollo), así que se pide solo
+                    // con https. En producción las URLs son siempre https: lo exige
+                    // MercadoPagoClientConfig al arrancar.
+                    .autoReturn(esUrlPublica(properties.getUrlExito()) ? "approved" : null)
                     // external_reference = pedidoId: es lo que después permite saber a
                     // qué pedido corresponde cada pago que informa Mercado Pago.
                     .externalReference(pedido.getId().toString())
@@ -180,7 +185,7 @@ public class PagoService {
             return new PreferenciaPagoResponse(preference.getId(), preference.getInitPoint());
 
         } catch (MPApiException | MPException e) {
-            log.error("No se pudo crear la preferencia de pago para el pedido {}", pedidoId, e);
+            log.error("No se pudo crear la preferencia de pago para el pedido {}: {}", pedidoId, detalleMp(e), e);
             throw new IllegalStateException("No se pudo generar el link de pago. Intentá de nuevo.", e);
         }
     }
@@ -206,7 +211,7 @@ public class PagoService {
         try {
             payment = paymentClient.get(idNumerico);
         } catch (MPApiException | MPException e) {
-            throw new IllegalStateException("No se pudo consultar el pago " + mpPaymentId + " a Mercado Pago", e);
+            throw new IllegalStateException("No se pudo consultar el pago " + mpPaymentId + " a Mercado Pago: " + detalleMp(e), e);
         }
 
         Optional<UUID> pedidoId = pedidoIdDe(payment);
@@ -328,7 +333,7 @@ public class PagoService {
         } catch (MPApiException | MPException e) {
             // Sin reembolso no se guarda nada: la excepción hace rollback y el pago
             // se vuelve a intentar en el próximo webhook o pasada del job.
-            throw new IllegalStateException("No se pudo reembolsar el pago " + mpPaymentId, e);
+            throw new IllegalStateException("No se pudo reembolsar el pago " + mpPaymentId + ": " + detalleMp(e), e);
         }
         pago.setEstado(EstadoPago.REEMBOLSADO);
     }
@@ -390,7 +395,7 @@ public class PagoService {
             }
             return true;
         } catch (MPApiException | MPException e) {
-            log.warn("No se pudo conciliar el pedido {} con Mercado Pago: se reintenta", pedido.getId(), e);
+            log.warn("No se pudo conciliar el pedido {} con Mercado Pago ({}): se reintenta", pedido.getId(), detalleMp(e));
             return false;
         }
     }
@@ -439,6 +444,20 @@ public class PagoService {
 
     private static java.time.OffsetDateTime aOffset(LocalDateTime fecha) {
         return fecha.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+    }
+
+    // "Api error. Check response for details" no dice nada: el motivo real
+    // (credencial inválida, campo rechazado, etc.) viene en el cuerpo de la
+    // respuesta de Mercado Pago. No incluye el access token.
+    static String detalleMp(Exception e) {
+        if (e instanceof MPApiException api && api.getApiResponse() != null) {
+            return "HTTP " + api.getStatusCode() + " " + api.getApiResponse().getContent();
+        }
+        return e.getMessage();
+    }
+
+    static boolean esUrlPublica(String url) {
+        return url != null && url.startsWith("https://");
     }
 
     static EstadoPago mapearEstado(String estadoMp) {

@@ -4,6 +4,7 @@ import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPResultsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
@@ -461,6 +462,52 @@ class PagoServiceTest {
 
             assertEquals(EstadoPedido.CANCELADO, pedido.getEstado());
             assertEquals(EstadoPago.EXPIRADO, pendiente.getEstado());
+        }
+    }
+
+    @Nested
+    class DetalleDeErrores {
+
+        private MPApiException errorDeApi(int status, String cuerpo) {
+            MPApiException e = mock(MPApiException.class, RETURNS_DEEP_STUBS);
+            when(e.getStatusCode()).thenReturn(status);
+            when(e.getApiResponse().getContent()).thenReturn(cuerpo);
+            return e;
+        }
+
+        @Test
+        void incluyeElCodigoYElCuerpoDeLaRespuesta() {
+            assertEquals("HTTP 400 {\"message\":\"auto_return invalid\"}",
+                    PagoService.detalleMp(errorDeApi(400, "{\"message\":\"auto_return invalid\"}")));
+        }
+
+        @Test
+        void dejaElCuerpoEnUnaSolaLinea() {
+            String detalle = PagoService.detalleMp(errorDeApi(502, "<html>\r\n<body>\n\nBad Gateway\n</body>\r\n</html>\n"));
+            assertEquals("HTTP 502 <html> <body> Bad Gateway </body> </html>", detalle);
+        }
+
+        @Test
+        void recortaUnCuerpoLargo() {
+            String detalle = PagoService.detalleMp(errorDeApi(502, "x".repeat(5000)));
+            assertEquals("HTTP 502 " + "x".repeat(PagoService.MAXIMO_DETALLE_MP) + "...", detalle);
+        }
+
+        @Test
+        void respuestaSinCuerpo() {
+            assertEquals("HTTP 500 (sin detalle)", PagoService.detalleMp(errorDeApi(500, null)));
+        }
+
+        @Test
+        void errorSinRespuestaDeLaApiUsaElMensaje() {
+            assertEquals("timeout de conexión", PagoService.detalleMp(new MPException("timeout\nde conexión")));
+        }
+
+        @Test
+        void esHttpsSoloMiraElEsquema() {
+            assertTrue(PagoService.esHttps("https://tierra.com.ar/checkout/exito"));
+            assertFalse(PagoService.esHttps("http://localhost:3000/checkout/exito"));
+            assertFalse(PagoService.esHttps(null));
         }
     }
 }

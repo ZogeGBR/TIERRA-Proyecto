@@ -8,15 +8,17 @@ import { ProductCard } from "@/components/ProductCard";
 export default async function CatalogoPage({
   searchParams
 }: {
-  searchParams: { categoriaId?: string; marcaId?: string };
+  // Desde Next 15, searchParams llega como Promise y hay que esperarlo.
+  searchParams: Promise<{ categoriaId?: string; marcaId?: string }>;
 }) {
+  const { categoriaId, marcaId } = await searchParams;
   let productos: Awaited<ReturnType<typeof api.productos.listarPorCategoria>> = [];
 
   try {
-    if (searchParams.categoriaId) {
-      productos = await api.productos.listarPorCategoria(searchParams.categoriaId);
-    } else if (searchParams.marcaId) {
-      productos = await api.productos.listarPorMarca(searchParams.marcaId);
+    if (categoriaId) {
+      productos = await api.productos.listarPorCategoria(categoriaId);
+    } else if (marcaId) {
+      productos = await api.productos.listarPorMarca(marcaId);
     }
   } catch {
     // Si el backend todavía no está levantado, mostramos el catálogo vacío
@@ -25,10 +27,10 @@ export default async function CatalogoPage({
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-bordo-oscuro mb-6">Catálogo</h1>
+      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Catálogo</h1>
 
       {productos.length === 0 ? (
-        <p className="text-tierra-bordo-oscuro/60">
+        <p className="text-tierra-terracota-oscuro/60">
           No hay productos para mostrar todavía. Elegí una categoría o marca desde el inicio.
         </p>
       ) : (

@@ -1,20 +1,24 @@
 import type { Config } from "tailwindcss";
 
-// Colores del boceto, con el fondo llevado a un tono más cálido (más
-// tostado/tierra) que el crema frío que tenía antes.
+// Paleta rediseñada — reemplaza por completo la anterior (bordó/crema
+// fría/azul/naranja/teal). Colores extraídos directamente de la imagen
+// de referencia (acuarela abstracta terracota + verde azulado), no
+// inventados: terracota, terracota-oscuro, crema, crema-oscuro, verde,
+// verde-claro. "ambar" se mantiene casi igual al naranja anterior porque
+// ya aparecía tal cual en esa misma imagen.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         tierra: {
-          bordo: "#5C2A32",
-          "bordo-oscuro": "#431E24",
-          crema: "#F5E7D0",
-          "crema-oscuro": "#E9D3AC",
-          azul: "#2D6CA6",
-          naranja: "#E08A2B",
-          teal: "#1E7F72"
+          terracota: "#B8571F",
+          "terracota-oscuro": "#6B3517",
+          crema: "#F7ECDD",
+          "crema-oscuro": "#EAD9BE",
+          verde: "#2B5F4E",
+          "verde-claro": "#8FB39D",
+          ambar: "#E08A2B"
         }
       },
       fontFamily: {

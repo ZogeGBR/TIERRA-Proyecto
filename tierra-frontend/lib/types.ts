@@ -35,8 +35,8 @@ export interface ProductoDetalle {
 
 export type RolUsuario = "CLIENTE" | "ADMIN" | "OPERADOR";
 
-// Lo que devuelven /auth/registro, /auth/login y /auth/yo: siempre la misma
-// forma, así el frontend tiene un solo tipo de usuario.
+// Lo que devuelven /auth/codigo/verificar, /auth/equipo/login y /auth/yo:
+// siempre la misma forma, así el frontend tiene un solo tipo de usuario.
 export interface Usuario {
   id: string;
   nombre: string;
@@ -44,16 +44,15 @@ export interface Usuario {
   rol: RolUsuario;
 }
 
-export interface RegistroRequest {
-  nombre: string;
-  email: string;
-  password: string;
-  telefono?: string;
-}
-
+// Login del equipo. Los clientes no tienen contraseña: entran con un código.
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+// Respuesta de los endpoints que sólo informan algo, como pedir un código.
+export interface MensajeResponse {
+  mensaje: string;
 }
 
 export interface ItemPedidoRequest {

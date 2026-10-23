@@ -54,15 +54,15 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-bordo-oscuro mb-6">Proceso de compra</h1>
+      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Proceso de compra</h1>
 
       <div className="flex gap-6 mb-8 text-sm">
         {(["1. Datos del cliente", "2. Datos de envío", "3. Pago"] as const).map((label, i) => (
           <div
             key={label}
-            className={`flex items-center gap-2 ${paso === i + 1 ? "text-tierra-bordo font-medium" : "text-tierra-bordo-oscuro/40"}`}
+            className={`flex items-center gap-2 ${paso === i + 1 ? "text-tierra-terracota font-medium" : "text-tierra-terracota-oscuro/40"}`}
           >
-            <span className="w-6 h-6 rounded-full bg-tierra-bordo text-white flex items-center justify-center text-xs">
+            <span className="w-6 h-6 rounded-full bg-tierra-terracota text-white flex items-center justify-center text-xs">
               {i + 1}
             </span>
             {label}
@@ -78,20 +78,20 @@ export default function CheckoutPage() {
                 placeholder="Nombre completo"
                 value={datosCliente.nombre}
                 onChange={(e) => setDatosCliente({ ...datosCliente, nombre: e.target.value })}
-                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
               />
               <input
                 placeholder="Correo electrónico"
                 type="email"
                 value={datosCliente.email}
                 onChange={(e) => setDatosCliente({ ...datosCliente, email: e.target.value })}
-                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
               />
               <input
                 placeholder="Teléfono"
                 value={datosCliente.telefono}
                 onChange={(e) => setDatosCliente({ ...datosCliente, telefono: e.target.value })}
-                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
               />
               <button
                 onClick={() => setPaso(2)}
@@ -107,13 +107,13 @@ export default function CheckoutPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setMetodoEnvio("domicilio")}
-                  className={`flex-1 border rounded px-3 py-3 text-left transition-colors hover:border-tierra-bordo/50 focus:outline-none focus:ring-2 focus:ring-tierra-bordo/40 ${metodoEnvio === "domicilio" ? "border-tierra-bordo bg-tierra-crema" : "border-tierra-crema-oscuro"}`}
+                  className={`flex-1 border rounded px-3 py-3 text-left transition-colors hover:border-tierra-terracota/50 focus:outline-none focus:ring-2 focus:ring-tierra-terracota/40 ${metodoEnvio === "domicilio" ? "border-tierra-terracota bg-tierra-crema" : "border-tierra-crema-oscuro"}`}
                 >
                   Envío a domicilio — ${COSTO_ENVIO_REFERENCIAL.toLocaleString("es-AR")}
                 </button>
                 <button
                   onClick={() => setMetodoEnvio("retiro")}
-                  className={`flex-1 border rounded px-3 py-3 text-left transition-colors hover:border-tierra-bordo/50 focus:outline-none focus:ring-2 focus:ring-tierra-bordo/40 ${metodoEnvio === "retiro" ? "border-tierra-bordo bg-tierra-crema" : "border-tierra-crema-oscuro"}`}
+                  className={`flex-1 border rounded px-3 py-3 text-left transition-colors hover:border-tierra-terracota/50 focus:outline-none focus:ring-2 focus:ring-tierra-terracota/40 ${metodoEnvio === "retiro" ? "border-tierra-terracota bg-tierra-crema" : "border-tierra-crema-oscuro"}`}
                 >
                   Retiro en tienda — Gratis
                 </button>
@@ -125,20 +125,20 @@ export default function CheckoutPage() {
                     placeholder="Calle y número"
                     value={datosEnvio.calle}
                     onChange={(e) => setDatosEnvio({ ...datosEnvio, calle: e.target.value })}
-                    className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                    className="w-full border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
                   />
                   <div className="flex gap-3">
                     <input
                       placeholder="Código postal"
                       value={datosEnvio.codigoPostal}
                       onChange={(e) => setDatosEnvio({ ...datosEnvio, codigoPostal: e.target.value })}
-                      className="w-1/2 border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                      className="w-1/2 border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
                     />
                     <input
                       placeholder="Ciudad"
                       value={datosEnvio.ciudad}
                       onChange={(e) => setDatosEnvio({ ...datosEnvio, ciudad: e.target.value })}
-                      className="w-1/2 border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-azul focus:ring-1 focus:ring-tierra-azul"
+                      className="w-1/2 border border-tierra-crema-oscuro rounded px-3 py-2 transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
                     />
                   </div>
                 </>
@@ -155,7 +155,7 @@ export default function CheckoutPage() {
 
           {paso === 3 && (
             <div className="space-y-4">
-              <p className="text-sm text-tierra-bordo-oscuro/70">
+              <p className="text-sm text-tierra-terracota-oscuro/70">
                 El pago se completa en Mercado Pago: tarjetas de crédito/débito, cuotas o dinero en cuenta.
                 Tierra nunca ve ni guarda el número de tarjeta.
               </p>

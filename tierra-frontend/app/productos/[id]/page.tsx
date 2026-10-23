@@ -1,8 +1,10 @@
 import { api } from "@/lib/api";
 import { AgregarAlCarrito } from "./AgregarAlCarrito";
 
-export default async function ProductoDetallePage({ params }: { params: { id: string } }) {
-  const producto = await api.productos.detalle(params.id);
+// Desde Next 15, params llega como Promise y hay que esperarlo.
+export default async function ProductoDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const producto = await api.productos.detalle(id);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-10">
@@ -14,10 +16,10 @@ export default async function ProductoDetallePage({ params }: { params: { id: st
       </div>
 
       <div>
-        <p className="text-sm text-tierra-bordo-oscuro/60">{producto.marca}</p>
-        <h1 className="font-serif text-3xl font-semibold text-tierra-bordo-oscuro">{producto.nombre}</h1>
+        <p className="text-sm text-tierra-terracota-oscuro/60">{producto.marca}</p>
+        <h1 className="font-serif text-3xl font-semibold text-tierra-terracota-oscuro">{producto.nombre}</h1>
         <p className="mt-2 text-2xl font-bold">${producto.precio.toLocaleString("es-AR")}</p>
-        <p className="mt-4 text-tierra-bordo-oscuro/80">{producto.descripcion}</p>
+        <p className="mt-4 text-tierra-terracota-oscuro/80">{producto.descripcion}</p>
 
         <AgregarAlCarrito producto={producto} />
       </div>

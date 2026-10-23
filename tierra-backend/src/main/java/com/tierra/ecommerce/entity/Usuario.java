@@ -26,7 +26,10 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    // Vacío para los clientes, que entran con un código y no tienen
+    // contraseña (ADR 0005). Solo el equipo tiene contraseña. La migración V8
+    // lo garantiza con una restricción CHECK.
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(length = 30)

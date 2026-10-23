@@ -111,6 +111,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     // --- Público: el catálogo tiene que verse sin cuenta ---
                     .requestMatchers(HttpMethod.GET, "/api/productos", "/api/productos/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/categorias", "/api/marcas").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/alquiler/**").permitAll()
                     // Los dos canales de acceso (ADR 0005). El registro ya no
                     // existe: los clientes se crean al comprar.

@@ -167,7 +167,7 @@ public class PagoService {
                     // (por ejemplo http://localhost en desarrollo), así que se pide solo
                     // con https. En producción las URLs son siempre https: lo exige
                     // MercadoPagoClientConfig al arrancar.
-                    .autoReturn(esUrlPublica(properties.getUrlExito()) ? "approved" : null)
+                    .autoReturn(esHttps(properties.getUrlExito()) ? "approved" : null)
                     // external_reference = pedidoId: es lo que después permite saber a
                     // qué pedido corresponde cada pago que informa Mercado Pago.
                     .externalReference(pedido.getId().toString())
@@ -448,15 +448,33 @@ public class PagoService {
 
     // "Api error. Check response for details" no dice nada: el motivo real
     // (credencial inválida, campo rechazado, etc.) viene en el cuerpo de la
-    // respuesta de Mercado Pago. No incluye el access token.
+    // respuesta de Mercado Pago. Se registra solo esa respuesta, nunca el
+    // pedido que mandamos (lleva el email del comprador), y sin el access token.
     static String detalleMp(Exception e) {
         if (e instanceof MPApiException api && api.getApiResponse() != null) {
-            return "HTTP " + api.getStatusCode() + " " + api.getApiResponse().getContent();
+            return "HTTP " + api.getStatusCode() + " " + enUnaLinea(api.getApiResponse().getContent());
         }
-        return e.getMessage();
+        return enUnaLinea(e.getMessage());
     }
 
-    static boolean esUrlPublica(String url) {
+    static final int MAXIMO_DETALLE_MP = 500;
+
+    // Si responde algo intermedio (un proxy, una página HTML de error), el
+    // cuerpo puede ser enorme o traer saltos de línea que parten el log en
+    // renglones que parecen otros mensajes. Se pasa a una línea y se recorta.
+    // "..." y no "…": la consola de Windows muestra mal lo que no es ASCII.
+    static String enUnaLinea(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return "(sin detalle)";
+        }
+        String linea = texto.replaceAll("[\\r\\n]+", " ").trim();
+        return linea.length() > MAXIMO_DETALLE_MP ? linea.substring(0, MAXIMO_DETALLE_MP) + "..." : linea;
+    }
+
+    // Solo mira el esquema: https://localhost también da true. Alcanza porque
+    // en desarrollo se usa http y en producción MercadoPagoClientConfig exige
+    // URLs https reales.
+    static boolean esHttps(String url) {
         return url != null && url.startsWith("https://");
     }
 

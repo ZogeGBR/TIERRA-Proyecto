@@ -426,13 +426,14 @@ npm run dev
 
 ### 6.5 — Scripts de verificación
 
-En `tierra-backend/` hay tres scripts que comprueban el comportamiento de la autenticación y los permisos. Conviene correrlos después de tocar `SecurityConfig`, `AuthService` o cualquier contrato de la API:
+En `tierra-backend/` hay scripts que comprueban el comportamiento de la autenticación, los permisos y los pagos. Conviene correrlos después de tocar `SecurityConfig`, `AuthService` o cualquier contrato de la API:
 
 | Script | Qué verifica |
 |---|---|
 | `probar-auth.ps1` | Login, logout, bloqueo por intentos, CSRF, exención del webhook |
 | `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío |
 | `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador |
+| `probar-webhook.ps1` | La notificación de pago de Mercado Pago: rechaza una firma falsa, concilia un pago de prueba y no lo procesa dos veces. Recibe el número de operación de un pago hecho con credenciales de prueba (`-PagoId`) |
 
 Cada caso imprime el código obtenido y el esperado. Todos tienen que decir `OK`.
 

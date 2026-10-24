@@ -28,6 +28,18 @@ param(
 . "$PSScriptRoot\probar-comun.ps1"
 $fallas = 0
 
+# Se valida antes de usarlo: va en la URL y en las consultas SQL. Un numero
+# pegado con una letra o un espacio en el medio haria fallar la consulta de
+# forma confusa, y asi tampoco entra texto arbitrario en el SQL.
+$PagoId = $PagoId.Trim()
+if ($PagoId -notmatch '^\d+$') {
+    Write-Host ""
+    Write-Host "PagoId tiene que ser el numero de operacion de Mercado Pago: solo digitos, por ejemplo 185750028472." -ForegroundColor Red
+    Write-Host "Se recibio: '$PagoId'" -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
+
 if (-not $Clave) {
     $env_raiz = Join-Path $PSScriptRoot "..\.env"
     if (Test-Path $env_raiz) {
@@ -70,6 +82,14 @@ function MandarWebhook($dataId, $firma, $requestId) {
     }
 }
 
+# Lo que una notificacion procesada dos veces cambiaria: el estado del pago,
+# el del pedido y el stock de lo que se compro. No alcanza con contar las
+# filas de pagos con ese numero: el indice unico de V5 nunca deja que haya
+# mas de una, asi que ese control daria OK siempre.
+function Estado($pagoId) {
+    Sql "SELECT 'pago ' || g.estado || ' / pedido ' || p.estado || ' / stock ' || COALESCE((SELECT string_agg(COALESCE(v.sku, v.id::text) || ': ' || v.stock || ' (reservado ' || v.stock_reservado || ')', ', ' ORDER BY v.id) FROM pedido_items i JOIN variantes_producto v ON v.id = i.variante_id WHERE i.pedido_id = p.id), 'sin items') FROM pagos g JOIN pedidos p ON p.id = g.pedido_id WHERE g.mp_payment_id = '$pagoId';"
+}
+
 $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
 Write-Host "`n1. Notificacion con firma falsa" -ForegroundColor Cyan
@@ -85,14 +105,18 @@ if ($r.Codigo -eq 401) {
     Write-Host "       La clave no coincide con la del backend. Reinicialo con el mismo MP_WEBHOOK_SECRET." -ForegroundColor DarkGray
 }
 
-$vinculado = Sql "SELECT g.estado || ' / pedido ' || p.estado FROM pagos g JOIN pedidos p ON p.id = g.pedido_id WHERE g.mp_payment_id = '$PagoId';"
-Condicion ([bool]$vinculado) "el pago quedo vinculado a su pedido"
-if ($vinculado) { Write-Host "       pago $vinculado" -ForegroundColor DarkGray }
+$antes = Estado $PagoId
+Condicion ([bool]$antes) "el pago quedo vinculado a su pedido"
+if ($antes) { Write-Host "       $antes" -ForegroundColor DarkGray }
 
 Write-Host "`n3. La misma notificacion otra vez (Mercado Pago reintenta)" -ForegroundColor Cyan
 $requestId = [guid]::NewGuid().ToString()
 Verificar (MandarWebhook $PagoId (Firmar $PagoId $requestId $ts) $requestId) 200 "se acepta de nuevo"
-$filas = Sql "SELECT count(*) FROM pagos WHERE mp_payment_id = '$PagoId';"
-Condicion ($filas -eq "1") "sigue habiendo un solo pago con ese numero (no se proceso dos veces)"
+$despues = Estado $PagoId
+Condicion ($antes -and $despues -eq $antes) "el pago, el pedido y el stock quedaron igual (no se proceso dos veces)"
+if ($despues -ne $antes) {
+    Write-Host "       antes:   $antes" -ForegroundColor DarkGray
+    Write-Host "       despues: $despues" -ForegroundColor DarkGray
+}
 
 Resumen

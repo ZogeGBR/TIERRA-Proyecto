@@ -1,11 +1,35 @@
 "use client";
 
+import { TituloPalabras } from "@/components/TituloPalabras";
+import { useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, X, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { rutaDeProducto } from "@/lib/rutas";
+import { PagoSinTerminar } from "@/components/checkout/PagoSinTerminar";
 
 export default function CarritoPage() {
-  const { items, actualizarCantidad, quitarItem, subtotal } = useCart();
+  const { items, actualizarCantidad, quitarItem, subtotal, listo } = useCart();
+  // Ítem que se está quitando: se desliza 280 ms y recién ahí sale del carrito.
+  const [saliendo, setSaliendo] = useState<string | null>(null);
+  function quitarConAnimacion(id: string) {
+    setSaliendo(id);
+    setTimeout(() => {
+      quitarItem(id);
+      setSaliendo(null);
+    }, 280);
+  }
+
+  // Antes de leer el carrito guardado, `items` está vacío sin ser cierto:
+  // mostrar "tu carrito está vacío" ahí parpadearía para todos.
+  if (!listo) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-10" aria-busy="true">
+        <div className="skeleton h-9 w-56 mb-6" />
+        <div className="skeleton h-40" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -23,13 +47,13 @@ export default function CarritoPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">
-        Carrito de compras
-      </h1>
+      <TituloPalabras como="h1" texto="Carrito de compras" destacar="compras" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6" />
 
-      <div className="bg-white border border-tierra-crema-oscuro rounded-lg divide-y divide-tierra-crema-oscuro overflow-hidden">
+      <PagoSinTerminar />
+
+      <div className="grilla-anim bg-white border border-tierra-crema-oscuro rounded-lg divide-y divide-tierra-crema-oscuro overflow-hidden">
         {items.map((item) => (
-          <div key={item.varianteId} className="flex items-center gap-4 p-4">
+          <div key={item.varianteId} className={`flex items-center gap-4 p-4 ${saliendo === item.varianteId ? "anim-sale" : ""}`}>
             <div className="w-16 h-16 bg-tierra-crema-oscuro rounded-lg overflow-hidden shrink-0">
               {item.imagen && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -38,7 +62,9 @@ export default function CarritoPage() {
             </div>
 
             <div className="flex-1">
-              <p className="font-medium text-tierra-terracota-oscuro">{item.nombreProducto}</p>
+              <Link href={rutaDeProducto({ id: item.productoId })} className="font-medium text-tierra-terracota-oscuro hover:text-tierra-terracota transition-colors">
+                {item.nombreProducto}
+              </Link>
               <p className="text-xs text-tierra-terracota-oscuro/60">
                 {[item.talla, item.color].filter(Boolean).join(" / ")}
               </p>
@@ -52,7 +78,7 @@ export default function CarritoPage() {
               >
                 <Minus size={13} />
               </button>
-              <span className="w-7 text-center text-sm font-medium text-tierra-terracota-oscuro">{item.cantidad}</span>
+              <span key={item.cantidad} className="anim-saltito w-7 text-center text-sm font-medium text-tierra-terracota-oscuro">{item.cantidad}</span>
               <button
                 onClick={() => actualizarCantidad(item.varianteId, item.cantidad + 1)}
                 aria-label="Sumar una unidad"
@@ -62,12 +88,12 @@ export default function CarritoPage() {
               </button>
             </div>
 
-            <p className="w-24 text-right font-bold text-tierra-terracota-oscuro">
+            <p key={item.cantidad} className="anim-aviso w-24 text-right font-bold text-tierra-terracota-oscuro">
               ${(item.precioUnitario * item.cantidad).toLocaleString("es-AR")}
             </p>
 
             <button
-              onClick={() => quitarItem(item.varianteId)}
+              onClick={() => quitarConAnimacion(item.varianteId)}
               aria-label="Quitar del carrito"
               className="text-tierra-terracota-oscuro/40 hover:text-tierra-terracota transition-colors focus:outline-none focus:ring-2 focus:ring-tierra-terracota/40 rounded"
             >
@@ -79,7 +105,7 @@ export default function CarritoPage() {
 
       <div className="mt-6 flex justify-between items-center bg-gradient-to-r from-tierra-crema via-white to-tierra-crema border border-tierra-crema-oscuro rounded-lg px-6 py-4">
         <p className="text-lg text-tierra-terracota-oscuro">
-          Subtotal: <span className="font-bold">${subtotal.toLocaleString("es-AR")}</span>
+          Subtotal: <span key={subtotal} className="anim-saltito inline-block font-bold">${subtotal.toLocaleString("es-AR")}</span>
         </p>
         <Link href="/checkout" className="btn-naranja">
           Continuar compra

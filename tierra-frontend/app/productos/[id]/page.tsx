@@ -1,13 +1,37 @@
-import { api } from "@/lib/api";
+import { notFound } from "next/navigation";
+import { api, ApiError } from "@/lib/api";
+import type { ProductoDetalle } from "@/lib/types";
 import { AgregarAlCarrito } from "./AgregarAlCarrito";
 
-// Desde Next 15, params llega como Promise y hay que esperarlo.
+const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Devuelve el producto, o null si no existe. Cualquier OTRA falla (backend
+// caído, 500) se deja subir: la atrapa app/error.tsx, que es lo correcto —
+// decirle "no encontrado" a alguien cuando en realidad el servidor está caído
+// sería mentirle.
+async function cargarProducto(id: string): Promise<ProductoDetalle | null> {
+  // El backend no distingue un id mal formado ("/productos/abc") de un error
+  // interno: responde 500. Se valida acá para que ese caso sea un 404 limpio
+  // en vez de una pantalla de error. Cuando las URLs pasen a usar slug (H-E)
+  // esta línea se va, porque el parámetro ya no será un UUID.
+  if (!FORMATO_UUID.test(id)) return null;
+
+  try {
+    return await api.productos.detalle(id);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+// Next 15: `params` llega como una promesa.
 export default async function ProductoDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const producto = await api.productos.detalle(id);
+  const producto = await cargarProducto(id);
+  if (!producto) notFound();
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-10">
+    <div className="grilla-anim max-w-6xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-10">
       <div className="aspect-square bg-tierra-crema-oscuro rounded-lg overflow-hidden">
         {producto.imagenes[0] && (
           // eslint-disable-next-line @next/next/no-img-element

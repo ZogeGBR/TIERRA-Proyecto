@@ -1,3 +1,4 @@
+import { Inclinar } from "@/components/Inclinar";
 import Link from "next/link";
 
 interface CategoryCardProps {
@@ -23,6 +24,7 @@ const ANILLO_HOVER: Record<string, string> = {
 
 export function CategoryCard({ nombre, categoriaId, imagen, colorAcento = "terracota" }: CategoryCardProps) {
   return (
+    <Inclinar className="h-full">
     <Link
       href={`/productos?categoriaId=${categoriaId}`}
       className={`group flex flex-col rounded-lg overflow-hidden aspect-[4/5] shadow-sm ring-2 ring-transparent
@@ -39,5 +41,6 @@ export function CategoryCard({ nombre, categoriaId, imagen, colorAcento = "terra
         className="flex-1 min-h-0 w-full object-cover transition-transform duration-300 group-hover:scale-105"
       />
     </Link>
+    </Inclinar>
   );
 }

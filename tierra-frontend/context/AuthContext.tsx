@@ -1,15 +1,24 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { api } from "@/lib/api";
-import type { Usuario, RegistroRequest, LoginRequest } from "@/lib/types";
+import { api, ApiError } from "@/lib/api";
+import type { Usuario, LoginEquipoRequest } from "@/lib/types";
 
+// Modelo de acceso de la Fase 2 (ADR 0005):
+//  - Los CLIENTES no tienen contraseña: piden un código de 6 dígitos a su
+//    email y lo verifican. Sirve para ver su historial y sus datos guardados.
+//  - El EQUIPO (Daniel, Flor, F97) entra con contraseña, en /equipo.
+//  - Comprar NO requiere ninguna de las dos cosas.
 interface AuthContextValue {
   usuario: Usuario | null;
   /** true sólo mientras se resuelve la sesión inicial. Ver el comentario en el provider. */
   cargando: boolean;
-  iniciarSesion: (datos: LoginRequest) => Promise<Usuario>;
-  registrar: (datos: RegistroRequest) => Promise<Usuario>;
+  /** Pide el código. Siempre "funciona" desde el punto de vista de la pantalla. */
+  solicitarCodigo: (email: string) => Promise<void>;
+  /** Verifica el código y deja la sesión abierta. Lanza ApiError si no sirve. */
+  verificarCodigo: (email: string, codigo: string) => Promise<Usuario>;
+  /** Login con contraseña, solo equipo. */
+  iniciarSesionEquipo: (datos: LoginEquipoRequest) => Promise<Usuario>;
   cerrarSesion: () => Promise<void>;
 }
 
@@ -27,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // seguiría diciendo que hay alguien logueado.
   //
   // Esta llamada tiene un efecto secundario útil: es un GET, y su respuesta
-  // trae la cookie del token CSRF. Para cuando la persona apriete "iniciar
-  // sesión", el token ya está. Si la primera llamada del navegador fuera un
+  // trae la cookie del token CSRF. Para cuando la persona apriete "pedir
+  // código", el token ya está. Si la primera llamada del navegador fuera un
   // POST, no habría token todavía y el backend respondería 403.
   useEffect(() => {
     let cancelado = false;
@@ -38,11 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((u) => {
         if (!cancelado) setUsuario(u);
       })
-      .catch(() => {
-        // Un 401 acá es lo normal: significa que no hay sesión, no que algo
-        // falló. No hay forma de distinguirlo de un error de red con el
-        // apiFetch actual, y tampoco cambia qué hacer: mostrar el sitio
-        // como visitante.
+      .catch((e) => {
+        // Un 401 es lo normal: significa "no hay sesión". Cualquier otra cosa
+        // (red caída, 500) tampoco cambia qué hacer acá -- mostrar el sitio
+        // como visitante --, pero ahora se distingue para poder verlo en la
+        // consola en vez de tragarlo.
+        if (!(e instanceof ApiError && e.status === 401)) {
+          console.warn("No se pudo comprobar la sesión:", e);
+        }
         if (!cancelado) setUsuario(null);
       })
       .finally(() => {
@@ -54,19 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function iniciarSesion(datos: LoginRequest): Promise<Usuario> {
-    // Sin try/catch: el error se propaga para que la pantalla lo muestre.
-    // Atraparlo acá lo haría desaparecer en silencio, que es justamente el
-    // problema que tiene el resto del frontend hoy.
-    const u = await api.auth.login(datos);
+  async function solicitarCodigo(email: string): Promise<void> {
+    // Sin try/catch: un error de red o un 5xx tiene que llegar a la pantalla.
+    // Lo que NO debe hacer la pantalla es distinguir "el email no existe" (el
+    // backend responde siempre lo mismo y el frontend no debe adivinar).
+    await api.auth.solicitarCodigo({ email });
+  }
+
+  async function verificarCodigo(email: string, codigo: string): Promise<Usuario> {
+    const u = await api.auth.verificarCodigo({ email, codigo });
     setUsuario(u);
     return u;
   }
 
-  async function registrar(datos: RegistroRequest): Promise<Usuario> {
-    // El backend deja la sesión iniciada al registrar, así que no hace falta
-    // un login posterior.
-    const u = await api.auth.registrar(datos);
+  async function iniciarSesionEquipo(datos: LoginEquipoRequest): Promise<Usuario> {
+    const u = await api.auth.loginEquipo(datos);
     setUsuario(u);
     return u;
   }
@@ -83,7 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, cargando, iniciarSesion, registrar, cerrarSesion }}>
+    <AuthContext.Provider
+      value={{ usuario, cargando, solicitarCodigo, verificarCodigo, iniciarSesionEquipo, cerrarSesion }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -93,4 +109,9 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
   return ctx;
+}
+
+/** ¿Es una cuenta de cliente (entra con código)? El resto es del equipo. */
+export function esCliente(u: Usuario | null): boolean {
+  return u?.rol === "CLIENTE";
 }

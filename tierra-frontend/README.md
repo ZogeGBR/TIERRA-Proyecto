@@ -1,21 +1,48 @@
 # Tierra — frontend
 
-Next.js 14 (App Router) + TypeScript + Tailwind, consumiendo la API de `tierra-backend`.
+Next.js 15.5.27 + React 19.2.8 (App Router, mismas versiones que la rama `develop`) + TypeScript + Tailwind, consumiendo la API de `tierra-backend`.
 
 ## Cómo levantarlo
 
 1. `npm install`
-2. `cp .env.local.example .env.local` y completar `NEXT_PUBLIC_API_URL` con la URL del backend.
+2. `cp .env.local.example .env.local` y completar `NEXT_PUBLIC_API_URL` (y, si querés, `NEXT_PUBLIC_WHATSAPP_ALQUILER`).
 3. `npm run dev`
 
-## Pendientes conocidos (marcados en el código con comentarios)
+## Cómo funciona el acceso (Fase 2)
 
-- **Usuario y dirección en el checkout**: `CrearPedidoRequest` hoy pide un `usuarioId` y
-  `direccionEnvioId` que ya existan en la base. Falta un flujo de registro/login (o
-  checkout como invitado con creación exprés de usuario+dirección) antes de conectar
-  el checkout a un usuario real — está marcado en `app/checkout/page.tsx`.
-- **Tipos de equipo de alquiler hardcodeados** en `app/alquiler/page.tsx` — reemplazar
-  por un `GET /api/tipos-equipo-alquiler` cuando se agregue ese endpoint al backend.
-- **Categorías hardcodeadas** en la home — mismo caso, falta `GET /api/categorias`.
-- El carrito vive en `localStorage` (`context/CartContext.tsx`) porque todavía no hay
-  sesión de usuario. Cuando haya login, conviene sincronizarlo con el backend.
+- **Comprar no requiere cuenta ni código.** El checkout manda nombre, email, teléfono (y DNI + dirección solo con envío a domicilio) en el propio pedido. Comprar nunca abre sesión.
+- **"Mis pedidos" y "guardar mis datos"** sí requieren sesión de cliente: se entra en `/login` con un código de 6 dígitos que llega por email.
+- **El equipo** entra por `/equipo` (email + contraseña). No hay registro público.
+- El carrito vive en el navegador (`localStorage`); cerrar sesión no lo borra.
+- Contrato de endpoints que asume el frontend: `contrato-fase2-frontend.md`.
+
+## Pruebas
+
+| Comando | Qué hace |
+|---|---|
+| `npm test` | Pruebas de la lógica pura (validaciones, cobertura, pago pendiente, alquiler…). |
+| `npm run test:mutaciones` | Rompe a propósito cada regla y comprueba que las pruebas lo detecten. |
+| `npm run backend-falso` | Backend de mentira en `:8080` que cumple el contrato de la Fase 2 (para desarrollar sin el real). |
+| `node dev/e2e.mjs` | E2E en Chromium contra el backend falso (necesita `playwright`; ver cabecera del archivo). |
+| `node dev/e2e-develop.mjs` | Frontend contra un backend que se comporta como `develop` (rutas nuevas ausentes, catálogo lista simple). |
+| `node dev/e2e-migracion.mjs` | Riesgos de la migración a Next 15 / React 19: versiones, `inert`, páginas con `params` asíncronos, fondo de montañas del login y video nuevo de ondas. |
+| `node dev/e2e-fluidez.mjs` | Tarjetas del mismo tamaño, página Sobre Tierra y fluidez: header de vidrio sin saltos, barra de progreso, titulares por palabra, hero con barras, flechas del carrusel, tarjetas con profundidad, luz del cursor, movimiento reducido, fps. |
+| `node dev/e2e-home.mjs` | Home: video de ondas, sombreado del borde, tarjeta del hero quieta y carrusel de más vendidos / más buscados. |
+
+Para probar contra el backend falso: `NEXT_PUBLIC_CATALOGO_DE_PRUEBA=0 NEXT_PUBLIC_API_URL=http://localhost:8080/api npm run build && npm start`.
+Sin internet para Google Fonts: `NEXT_FONT_GOOGLE_MOCKED_RESPONSES=$PWD/dev/fuentes-falsas.js npm run build` (solo para pruebas).
+
+## Pendientes conocidos
+
+- Cuando el backend implemente los endpoints de `contrato-fase2-frontend.md`, probar contra él y borrar `dev/backend-falso.mjs` si ya no hace falta.
+- Rutas con slug (tarea 8): `lib/rutas.ts` ya lo soporta; hoy devuelve el id hasta que el backend mande `slug`.
+- Catálogo de prueba (`lib/catalogoDePrueba.ts`): se apaga con `NEXT_PUBLIC_CATALOGO_DE_PRUEBA=0` y nunca está activo en producción por defecto.
+- Animaciones: `app/template.tsx` (fundido por pantalla), `.grilla-anim` (escalonado), `components/Nieve.tsx` + `.tema-invierno` (alquiler). Pruebas: `node dev/e2e-animaciones.mjs`.
+- Temas por ruta: `app/template.tsx` marca `data-ruta-tema` (invierno / tierra) y `globals.css` lo lee con `body:has(...)` (header, footer, fondo).
+- Contacto real en `lib/contacto.ts` (WhatsApp +54 9 2945 699751, tierra.esquel@gmail.com, instagram.com/tierra.esquel; sin Facebook). Videos de fondo por ruta en `app/template.tsx` (`VideoFondo`). Banda "Somos Tierra" y footer: solo el dibujo de la cordillera (sin ondas ni video). Pruebas: `node dev/e2e-contacto.mjs`.
+
+## Lenguaje de movimiento (ronda de fluidez)
+- Variables en `app/globals.css`: `--ease-salida`, `--ease-vaiven`, `--t-micro`, `--t-bloque`. Todo se anima solo con `transform`/`opacity`.
+- `components/TituloPalabras.tsx` (titulares por palabra, modo `carga` o `scroll`), `BarraProgreso.tsx` (hilo de lectura), `LuzCursor.tsx` (resplandor del mouse), `Inclinar.tsx` (profundidad en tarjetas), header con vidrio (`Header.tsx`, altura fija: sin saltos de contenido).
+- Carruseles: `CarruselProductos` usa un bucle con física (frenado gradual, flechas con desaceleración, inercia al soltar); `HeroCarrusel` cambia de foto cuando se llena la barra de progreso (se pausa sola).
+- Todo respeta `prefers-reduced-motion`; luz e inclinación solo con mouse.

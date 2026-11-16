@@ -243,12 +243,14 @@ FROM (VALUES
 WHERE p.id = v.id;
 
 -- ---------- ALQUILER DE INVIERNO ----------
-INSERT INTO tipos_equipo_alquiler (id, nombre) VALUES
-  ('f0000000-0000-0000-0000-000000000001', 'Esquís'),
-  ('f0000000-0000-0000-0000-000000000002', 'Tabla de snowboard'),
-  ('f0000000-0000-0000-0000-000000000003', 'Botas de esquí'),
-  ('f0000000-0000-0000-0000-000000000004', 'Bastones')
-ON CONFLICT (id) DO NOTHING;
+-- precio_dia (V14) es el que usa el estimador de la página de alquiler. Se
+-- actualiza también en una base que ya tenía los tipos.
+INSERT INTO tipos_equipo_alquiler (id, nombre, precio_dia) VALUES
+  ('f0000000-0000-0000-0000-000000000001', 'Esquís', 12000),
+  ('f0000000-0000-0000-0000-000000000002', 'Tabla de snowboard', 13000),
+  ('f0000000-0000-0000-0000-000000000003', 'Botas de esquí', 6000),
+  ('f0000000-0000-0000-0000-000000000004', 'Bastones', 2500)
+ON CONFLICT (id) DO UPDATE SET precio_dia = EXCLUDED.precio_dia;
 
 INSERT INTO equipos_alquiler (id, tipo_id, marca_id, modelo, talla, numero_serie, condicion, precio_dia, deposito_garantia, activo) VALUES
   ('11000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Scott Scrapper', '160cm', 'ESQ-0001', 'BUENO', 12000, 80000, true),

@@ -121,7 +121,10 @@ public class SecurityConfig {
                     // --- Público: el catálogo tiene que verse sin cuenta ---
                     .requestMatchers(HttpMethod.GET, "/api/productos", "/api/productos/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/categorias", "/api/marcas").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/alquiler/**").permitAll()
+                    // Del alquiler, solo los tipos con su precio, para el
+                    // estimador (tarea 20). Disponibilidad y reservas están
+                    // congeladas (decisión 0001) y caen en el denyAll.
+                    .requestMatchers(HttpMethod.GET, "/api/alquiler/tipos").permitAll()
                     // Los dos canales de acceso (ADR 0005). El registro ya no
                     // existe: los clientes se crean al comprar.
                     .requestMatchers(HttpMethod.POST, "/api/auth/codigo", "/api/auth/codigo/verificar").permitAll()

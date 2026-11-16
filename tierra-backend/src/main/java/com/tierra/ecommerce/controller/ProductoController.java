@@ -11,6 +11,7 @@ import com.tierra.ecommerce.service.ProductoService;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 // Catálogo público. El contrato (parámetros y respuesta) está en
@@ -48,6 +49,14 @@ public class ProductoController {
     @GetMapping("/filtros")
     public OpcionesFiltroDTO filtros() {
         return productoService.opcionesDeFiltro();
+    }
+
+    // "Más vendidos" de la home (regla en ProductoService). Lista vacía si
+    // hay menos de 3 productos con ventas. Ruta literal: gana sobre /{id}.
+    @GetMapping("/mas-vendidos")
+    public List<ProductoResumenDTO> masVendidos(
+            @RequestParam(defaultValue = "" + ProductoService.MAXIMO_MAS_VENDIDOS) int limite) {
+        return productoService.masVendidos(limite);
     }
 
     @GetMapping("/{id}")

@@ -20,7 +20,7 @@ Convenciones para todos los endpoints:
 | `GET /api/pedidos/mios` | 19 | ✅ |
 | `GET /api/cuenta/datos-entrega` | 22 | ✅ |
 | `DELETE /api/cuenta/datos-entrega` | 22 | ✅ |
-| `GET /api/productos/mas-vendidos` | — | pendiente |
+| `GET /api/productos/mas-vendidos` | — | ✅ |
 | `GET /api/alquiler/tipos` | 20 | pendiente |
 
 ---
@@ -96,6 +96,23 @@ Las opciones de los filtros de talle y color:
 - Solo talles y colores de variantes **con stock** en productos activos, así ninguno lleva por sí solo a una lista vacía.
 - Talles en este orden: letras de menor a mayor (XXS a XXXL), números de menor a mayor, cualquier otro alfabéticamente, y "Único" al final.
 - Colores en orden alfabético.
+
+### `GET /api/productos/mas-vendidos` — público
+
+El ranking "Lo que más se elige" de la home. Devuelve una lista con el mismo formato que `contenido` en `GET /api/productos` (`id`, `nombre`, `marca`, `categoria`, `precio`, `imagenPrincipal`), del más vendido al menos vendido.
+
+| Parámetro | Tipo | Qué hace |
+|---|---|---|
+| `limite` | entero, 3 a 8 | Cuántos productos como máximo. Por defecto 8 |
+
+La regla, acordada con Tierra:
+
+- Cuentan las **unidades vendidas en pedidos pagados** (`PAGADO`, `PREPARANDO`, `ENVIADO` o `ENTREGADO`) creados en los **últimos 90 días**. Un pedido cancelado no cuenta, aunque se haya pagado y reembolsado; tampoco uno pendiente.
+- Solo productos activos. Empates por nombre y después por id.
+- **Con menos de 3 productos vendidos responde `[]`**: una lista de 1 o 2 parece vacía, no "lo más vendido". El frontend aplica la misma regla y oculta la sección.
+- Errores 400: `limite` que no es un número o está fuera de 3 a 8.
+
+Cantidad de consultas: tres, sin importar cuántos productos haya (el ranking, los productos con marca y categoría, y sus imágenes).
 
 ### `GET /api/productos/{id}` — público
 

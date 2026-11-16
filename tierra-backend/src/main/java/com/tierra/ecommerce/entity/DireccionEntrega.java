@@ -20,6 +20,13 @@ public class DireccionEntrega {
     @Column(name = "envio_numero", length = 20)
     private String numero;
 
+    // Opcionales. Andreani los pide por separado para crear el envío.
+    @Column(name = "envio_piso", length = 10)
+    private String piso;
+
+    @Column(name = "envio_departamento", length = 10)
+    private String departamento;
+
     @Column(name = "envio_ciudad", length = 100)
     private String ciudad;
 

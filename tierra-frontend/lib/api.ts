@@ -7,8 +7,6 @@ import type {
   CotizacionEnvioRequest,
   CotizacionEnvioResponse,
   PedidoHistorial,
-  CrearPedidoRequest,
-  PedidoResponse,
   DatosEntregaGuardados,
   PreferenciaPago,
   Usuario,
@@ -36,10 +34,10 @@ import { TAMANIO_PAGINA, queryDeFiltros } from "./catalogo";
 // status 0 significa que la petición ni siquiera llegó al backend (red caída,
 // backend apagado) -- no hay respuesta HTTP que tenga código.
 //
-// `codigo` es opcional: hoy el backend no lo manda en los errores, pero se
-// lee si aparece (por ejemplo "EMAIL_DEL_EQUIPO", "SIN_STOCK") para no tener
-// que adivinar el motivo de un 409 mirando el texto. El contrato con el
-// backend se documenta en docs/contratos-fase2.md, con cada tarea del backend.
+// `codigo` viene solo en los errores en los que la pantalla tiene que
+// reaccionar distinto según el motivo ("EMAIL_DEL_EQUIPO", "SIN_STOCK",
+// "LINK_DE_PAGO_NO_DISPONIBLE"), para no adivinarlo mirando el texto. El
+// contrato con el backend se documenta en docs/contratos-fase2.md.
 export class ApiError extends Error {
   readonly status: number;
   readonly mensaje: string;
@@ -127,16 +125,17 @@ async function asegurarTokenCsrf(): Promise<string | null> {
   return leerTokenCsrf();
 }
 
-// `publico: true` marca un endpoint que NO debería pedir sesión. Mientras el
-// backend no lo implementa, una ruta que todavía no existe puede responder:
+// `publico: true` marca un endpoint público que el backend TODAVÍA NO
+// implementa. Mientras tanto, la ruta puede responder:
 //   - 401 "Necesitás iniciar sesión", si cae en el `anyRequest().denyAll()`
-//     de SecurityConfig (por ejemplo /api/checkout);
+//     de SecurityConfig;
 //   - 404 "La dirección solicitada no existe", si cae bajo una regla pública
 //     (por ejemplo /api/alquiler/tipos, que entra en /api/alquiler/**).
 // Sin esta marca la persona vería "tu sesión venció" o "la dirección no
 // existe", cuando en realidad falta implementar el endpoint. El 404 se
-// traduce sólo en los GET: en un POST público (checkout, cotización) un 404
-// puede ser un error real de negocio y su mensaje tiene que llegar.
+// traduce sólo en los GET: en un POST un 404 puede ser un error real de
+// negocio y su mensaje tiene que llegar. Cuando el endpoint se implementa,
+// se le saca la marca: sus 401 y 403 pasan a ser errores reales.
 async function apiFetch<T>(path: string, options?: RequestInit & { publico?: boolean }): Promise<T> {
   const publico = options?.publico === true;
   if (options) {
@@ -258,25 +257,21 @@ export const api = {
     }
   },
   // POST /checkout es la única puerta para crear pedidos y NO abre sesión
-  // (auditoría Fase 2, sección 3.1). Devuelve el link de pago.
+  // (tarea 9, decisión 0005). Devuelve el link de pago.
   checkout: {
     confirmar: (request: CheckoutRequest) =>
-      apiFetch<CheckoutResponse>("/checkout", { method: "POST", body: JSON.stringify(request), publico: true })
+      apiFetch<CheckoutResponse>("/checkout", { method: "POST", body: JSON.stringify(request) })
   },
   // Costo de envío y cobertura, ANTES de pagar (tarea 10). Informa: el que
   // cobra es el checkout, que vuelve a calcularlo.
   envios: {
     cotizar: (request: CotizacionEnvioRequest) =>
-      apiFetch<CotizacionEnvioResponse>("/envios/cotizacion", { method: "POST", body: JSON.stringify(request), publico: true })
+      apiFetch<CotizacionEnvioResponse>("/envios/cotizacion", { method: "POST", body: JSON.stringify(request) })
   },
   // Historial: solo del cliente de la sesión (el backend filtra por la
   // sesión, nunca por un id que mande el frontend).
   pedidos: {
-    mios: () => apiFetch<PedidoHistorial[]>("/pedidos/mios"),
-    // TEMPORAL, hasta la tarea 9 (ver CrearPedidoRequest en lib/types.ts).
-    // Exige sesión: sin ella el backend responde 401.
-    crear: (request: CrearPedidoRequest) =>
-      apiFetch<PedidoResponse>("/pedidos", { method: "POST", body: JSON.stringify(request) })
+    mios: () => apiFetch<PedidoHistorial[]>("/pedidos/mios")
   },
   // Datos guardados para la próxima compra (tarea 22). No hay endpoint para
   // ESCRIBIR: la única forma de guardar es el checkout con la casilla

@@ -121,6 +121,9 @@ public class SecurityConfig {
                     // sesión (tarea 10). Solo informa: el que cobra es el alta
                     // del pedido, que lo vuelve a calcular.
                     .requestMatchers(HttpMethod.POST, "/api/envios/cotizacion").permitAll()
+                    // Comprar no exige cuenta (ADR 0005). Es la única puerta
+                    // para crear pedidos: POST /api/pedidos ya no existe.
+                    .requestMatchers(HttpMethod.POST, "/api/checkout").permitAll()
 
                     // El webhook lo llama Mercado Pago, que no tiene ni puede
                     // tener credenciales nuestras. Su protección es la firma
@@ -130,7 +133,6 @@ public class SecurityConfig {
 
                     // --- Requiere sesión ---
                     .requestMatchers("/api/auth/yo", "/api/auth/logout").authenticated()
-                    .requestMatchers(HttpMethod.POST, "/api/pedidos").authenticated()
                     // Autenticado no alcanza: falta verificar que el pedido
                     // sea de quien pide el link de pago. Esa comprobación va
                     // en PagoService y es de la tarea 6 — está anotada como

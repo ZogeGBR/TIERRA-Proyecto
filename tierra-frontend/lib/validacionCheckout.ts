@@ -8,10 +8,17 @@ export interface DatosCheckout {
   dni: string;
   calle: string;
   numero: string;
+  // Opcionales. Andreani los pide para crear el envío (decisión 0006).
+  piso: string;
+  departamento: string;
   ciudad: string;
   provincia: string;
   codigoPostal: string;
 }
+
+// Los largos máximos que acepta el backend (CheckoutRequest).
+export const LARGO_MAXIMO_PISO = 10;
+export const LARGO_MAXIMO_DEPARTAMENTO = 10;
 
 export type ErroresCheckout = Partial<Record<keyof DatosCheckout, string>>;
 
@@ -22,6 +29,8 @@ export const DATOS_VACIOS: DatosCheckout = {
   dni: "",
   calle: "",
   numero: "",
+  piso: "",
+  departamento: "",
   ciudad: "",
   provincia: "",
   codigoPostal: ""
@@ -51,6 +60,8 @@ export function validarEntrega(d: DatosCheckout, tipoEntrega: TipoEntrega): Erro
   const digitosDni = soloDigitos(d.dni).length;
   if (digitosDni < 7 || digitosDni > 8) e.dni = "El DNI tiene 7 u 8 números.";
   if (d.calle.trim() === "") e.calle = "Escribí la calle.";
+  if (d.piso.trim().length > LARGO_MAXIMO_PISO) e.piso = `Hasta ${LARGO_MAXIMO_PISO} caracteres.`;
+  if (d.departamento.trim().length > LARGO_MAXIMO_DEPARTAMENTO) e.departamento = `Hasta ${LARGO_MAXIMO_DEPARTAMENTO} caracteres.`;
   if (d.ciudad.trim() === "") e.ciudad = "Escribí la ciudad.";
   if (d.provincia.trim() === "") e.provincia = "Elegí la provincia.";
   else if (estadoDeCobertura(d.provincia) === "fuera") e.provincia = "Todavía no enviamos a esa provincia: podés retirar en el local.";

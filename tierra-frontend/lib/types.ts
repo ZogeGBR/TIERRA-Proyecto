@@ -79,43 +79,26 @@ export interface ItemPedidoRequest {
 
 export type TipoEntrega = "ENVIO_DOMICILIO" | "RETIRO_LOCAL";
 
-// TEMPORAL, hasta la tarea 9: el checkout que sigue en uso crea el pedido con
-// POST /api/pedidos, que exige sesión. Con el checkout sin cuenta
-// (POST /api/checkout) estos dos tipos y api.pedidos.crear se borran.
-export interface CrearPedidoRequest {
-  // Sin usuarioId: de quién es el pedido lo decide la sesión en el backend.
-  tipoEntrega: TipoEntrega;
-  direccionEnvioId?: string | null;
-  items: ItemPedidoRequest[];
-}
-
-export interface PedidoResponse {
-  id: string;
-  tipoEntrega: TipoEntrega;
-  estado: string;
-  subtotal: number;
-  descuento: number;
-  costoEnvio: number;
-  total: number;
-  creadoEn: string;
-}
-
 export interface DireccionEntrega {
   calle: string;
   numero?: string | null;
+  piso?: string | null;
+  departamento?: string | null;
   ciudad: string;
   provincia: string;
   codigoPostal: string;
 }
 
-// --- Checkout sin cuenta (auditoría Fase 2, sección 3.1) ---
+// --- Checkout sin cuenta (tarea 9, decisión 0005) ---
 // Se compra sin sesión y sin contraseña. Los datos de contacto y la dirección
 // viajan EN el pedido (no en la cuenta): escribir el email de otra persona no
-// modifica nada de ella.
+// modifica nada de ella. Contrato en docs/contratos-fase2.md.
 
 export interface DireccionCheckoutRequest {
   calle: string;
   numero?: string;
+  piso?: string;
+  departamento?: string;
   ciudad: string;
   provincia: string;
   codigoPostal: string;
@@ -130,10 +113,6 @@ export interface CheckoutRequest {
   dni?: string;
   tipoEntrega: TipoEntrega;
   direccion?: DireccionCheckoutRequest | null;
-  codigoCupon?: string;
-  // Solo se tiene en cuenta con sesión de cliente (tarea 22); sin sesión el
-  // backend lo ignora.
-  guardarDatos?: boolean;
   items: ItemPedidoRequest[];
 }
 
@@ -205,7 +184,7 @@ export interface PreferenciaPago {
 }
 
 // Ítem del carrito en el frontend: no existe como tal en el backend,
-// se arma en el momento de crear el pedido (CrearPedidoRequest).
+// se arma en el momento de crear el pedido (CheckoutRequest).
 export interface ItemCarrito {
   varianteId: string;
   productoId: string;

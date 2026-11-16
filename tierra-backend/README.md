@@ -16,11 +16,15 @@ carrito), ajustar (alta de mercadería nueva) — todo pasa por ahí.
 
 ## Flujo de venta
 
-1. `POST /api/pedidos` — crea el pedido y **reserva** stock por 20 minutos
-   (`InventarioService.reservarStock`). No descuenta nada todavía. Hoy exige
-   sesión; con la tarea 9 de la Fase 2 se reemplaza por `POST /api/checkout`,
-   que no la exige (decisión 0005).
-2. `POST /api/pagos/pedidos/{id}/preferencia` — genera el link de Mercado Pago.
+1. `POST /api/checkout` — no exige sesión (decisión 0005). En una transacción
+   resuelve el cliente por el email (o por la sesión de cliente), crea el
+   pedido con los datos de contacto y la dirección, y **reserva** stock por
+   20 minutos (`InventarioService.reservarStock`). No descuenta nada todavía.
+   Después de confirmar esa transacción pide el link de Mercado Pago y lo
+   devuelve. Si Mercado Pago falla, cancela el pedido, libera el stock y
+   responde 503: no queda nada retenido.
+2. `POST /api/pagos/pedidos/{id}/preferencia` — genera un link nuevo para un
+   pedido pendiente (para volver a pagar).
 3. `POST /api/pagos/webhook` — valida la firma de Mercado Pago, consulta
    el pago real a su API y recién ahí `PagoService.confirmarPago` descuenta
    stock (`InventarioService.confirmarVenta`), solo si el monto coincide y
@@ -38,7 +42,8 @@ Sesión en cookie (decisión 0003), con dos canales de acceso (decisión 0005):
 
 - **Clientes:** sin contraseña. Piden un código de seis dígitos por email
   (`POST /api/auth/codigo`) y lo verifican (`POST /api/auth/codigo/verificar`).
-  Según la 0005, comprar no exige cuenta (se implementa con la tarea 9).
+  Comprar no exige cuenta: el checkout crea el cliente si hace falta, sin
+  contraseña y sin abrir sesión.
 - **Equipo** (Administrador y Operador): email y contraseña, en
   `POST /api/auth/equipo/login`.
 

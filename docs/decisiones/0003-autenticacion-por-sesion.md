@@ -88,7 +88,7 @@ Un endpoint nuevo al que nadie le asignó permisos falla en vez de quedar accesi
 
 ## Qué falta verificar automáticamente
 
-Todo lo de arriba se comprueba hoy con scripts manuales: `probar-auth.ps1`, `probar-codigo.ps1`, `probar-pedidos.ps1` y `probar-permisos.ps1`, en `tierra-backend/` (ver CONTRIBUTING §6.5). Sirven, pero solo protegen mientras alguien se acuerde de correrlos.
+Todo lo de arriba se comprueba hoy con scripts manuales: `probar-auth.ps1`, `probar-codigo.ps1`, `probar-checkout.ps1` y `probar-permisos.ps1`, en `tierra-backend/` (ver CONTRIBUTING §6.5). Sirven, pero solo protegen mientras alguien se acuerde de correrlos.
 
 Los casos que merecen tests automatizados en la Fase 5, en orden de importancia:
 

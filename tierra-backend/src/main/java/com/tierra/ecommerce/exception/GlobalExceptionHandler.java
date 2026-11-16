@@ -31,8 +31,22 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(StockInsuficienteException.class)
-    public ResponseEntity<ErrorResponse> handleStock(StockInsuficienteException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleStockInsuficiente(StockInsuficienteException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage(), "SIN_STOCK"));
+    }
+
+    @ExceptionHandler(EmailDelEquipoException.class)
+    public ResponseEntity<ErrorResponse> handleEmailDelEquipo(EmailDelEquipoException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ex.getMessage(), EmailDelEquipoException.CODIGO));
+    }
+
+    // CheckoutService ya canceló el pedido y registró la causa en el log. El
+    // detalle técnico de Mercado Pago no va en la respuesta.
+    @ExceptionHandler(LinkDePagoNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> handleLinkDePagoNoDisponible(LinkDePagoNoDisponibleException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(LinkDePagoNoDisponibleException.MENSAJE, LinkDePagoNoDisponibleException.CODIGO));
     }
 
     @ExceptionHandler(PagoNoPermitidoException.class)

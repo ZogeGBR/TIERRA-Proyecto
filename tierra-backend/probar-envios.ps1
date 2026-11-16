@@ -64,17 +64,18 @@ try {
 Condicion ($codigo -eq 403) "sin token CSRF -> $codigo (esperado 403)"
 
 Write-Host "`n6. El pedido cobra exactamente lo que dijo la cotizacion" -ForegroundColor Cyan
-# Direccion de test@ en el seed: Chubut, 9200.
-$dirPropia = "88000000-0000-0000-0000-000000000001"
+# Compra sin sesion a nombre de test@. Se compara contra el pedido guardado,
+# que existe tanto si responde 201 como 503 (ver VerificarCompra).
 $cotizado = [decimal](Json (Cotizar $s (Domicilio "Chubut" "9200"))).costo
-$s2 = NuevaSesion
-Verificar (EntrarComoCliente $s2 "test@tierra.esquel") 200 "entrar con codigo"
-$r = Pedir $s2 POST "/api/pedidos" "{""tipoEntrega"":""ENVIO_DOMICILIO"",""direccionEnvioId"":""$dirPropia"",""items"":$items}"
-Verificar $r 201 "pedido con envio a Chubut"
-$pedido = Json $r
-Condicion ($pedido -and [decimal]$pedido.costoEnvio -eq $cotizado) "costoEnvio del pedido ($($pedido.costoEnvio)) = cotizacion ($cotizado)"
-$r = Pedir $s2 POST "/api/pedidos" "{""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}"
-Condicion ($r.Codigo -eq 201 -and [decimal](Json $r).costoEnvio -eq 0) "con retiro, costoEnvio 0"
+$direccion = "{""calle"":""San Martin"",""numero"":""123"",""ciudad"":""Esquel"",""provincia"":""Chubut"",""codigoPostal"":""9200""}"
+$r = Pedir $s POST "/api/checkout" "{""nombre"":""Usuario de Prueba"",""email"":""test@tierra.esquel"",""telefono"":""2945 000000"",""dni"":""30111222"",""tipoEntrega"":""ENVIO_DOMICILIO"",""direccion"":$direccion,""items"":$items}"
+$id = VerificarCompra $r "test@tierra.esquel" "compra con envio a Chubut"
+$costo = [decimal]"$(Sql "SELECT costo_envio FROM pedidos WHERE id = '$id';")".Trim()
+Condicion ($costo -eq $cotizado) "costo de envio del pedido ($costo) = cotizacion ($cotizado)"
+$r = Pedir $s POST "/api/checkout" "{""nombre"":""Usuario de Prueba"",""email"":""test@tierra.esquel"",""telefono"":""2945 000000"",""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}"
+$id = VerificarCompra $r "test@tierra.esquel" "compra con retiro"
+$costo = [decimal]"$(Sql "SELECT costo_envio FROM pedidos WHERE id = '$id';")".Trim()
+Condicion ($costo -eq 0) "con retiro, costo de envio 0"
 
 ReiniciarCliente "test@tierra.esquel"
 CancelarPedidosDePrueba

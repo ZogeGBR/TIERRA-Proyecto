@@ -182,7 +182,7 @@ public class PagoService {
 
             Preference preference = preferenceClient.create(request);
             log.info("Preferencia {} creada para el pedido {} (pago {})", preference.getId(), pedido.getId(), pago.getId());
-            return new PreferenciaPagoResponse(preference.getId(), preference.getInitPoint());
+            return new PreferenciaPagoResponse(preference.getId(), preference.getInitPoint(), aOffset(vencePreferencia));
 
         } catch (MPApiException | MPException e) {
             log.error("No se pudo crear la preferencia de pago para el pedido {}: {}", pedidoId, detalleMp(e), e);

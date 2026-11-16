@@ -470,7 +470,7 @@ Los scripts de verificación cambian en los mismos Pull Requests que los rompen:
 |---|---|---|
 | `V7` | 2 | `usuarios.password_hash` admite nulos; tabla `codigos_acceso` |
 | `V8` | 3 | Clientes sin contraseña y restricción `chk_usuarios_metodo_acceso` |
-| `V9` | 9 | `contacto_nombre`, `contacto_telefono` y `contacto_dni` en `pedidos` |
+| `V10` | 9 | `contacto_nombre`, `contacto_telefono` y `contacto_dni` en `pedidos`, más `envio_piso` y `envio_departamento` para Andreani (0006). Era la `V9`, que la tomó la tarea 10 al mergearse antes |
 
 Los números son una reserva: el definitivo se confirma al mergear, y nunca se mergea un número menor después de uno mayor.
 
@@ -487,7 +487,7 @@ Los números son una reserva: el definitivo se confirma al mergear, y nunca se m
 ### En el frontend
 
 - `/login` pasa a tener dos pasos, email y código. Se crea `/equipo` y **se elimina `/registro`**, con todos sus enlaces.
-- El checkout explica junto al campo del email para qué sirve: *"Te mandamos la confirmación a este email. Con él vas a poder ver tus pedidos cuando quieras, sin contraseña."*
+- El checkout explica junto al campo del email para qué sirve: *"Con este email vas a poder ver tus pedidos cuando quieras, sin contraseña."* Cuando existan los emails de confirmación (Fase 3), el texto suma *"Te mandamos la confirmación a este email"*; antes, sería prometer algo que no pasa.
 - El frontend nunca intenta adivinar si un email existe: muestra el mensaje genérico que recibe.
 - Los campos del checkout llevan `autocomplete`, y con sesión aparecen la casilla para guardar los datos y la opción de borrarlos.
 

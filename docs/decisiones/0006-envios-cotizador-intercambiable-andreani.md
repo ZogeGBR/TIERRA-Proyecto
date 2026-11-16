@@ -52,7 +52,7 @@ La interfaz contempla el error: el cotizador lanza `CotizacionNoDisponibleExcept
 - `PedidoService` ya no tiene el costo escrito: lo pide a `EnvioService`, **antes de reservar stock**, así un destino fuera de zona se rechaza sin tocar el inventario.
 - El código postal de envío tiene que tener 4 números, que es el que usa Andreani para cotizar.
 - **Lo que falta para la integración, y en qué tarea:**
-  - **Piso y departamento** en la dirección del pedido: se agregan con la migración del checkout (tarea 9), como campo opcional.
+  - ~~**Piso y departamento** en la dirección del pedido~~: hecho en la tarea 9 (V10), como campos opcionales. Con la V10 el pedido también guarda el DNI y el teléfono de quien recibe, que Andreani pide para el destinatario.
   - **El cotizador de Andreani** y sus credenciales en variables de entorno (`ANDREANI_*`), nunca en el repo: tarea propia, apenas termine el bloque del checkout y estén las credenciales.
   - **Crear el envío en Andreani cuando se aprueba el pago**, y guardar el número de envío y el seguimiento: la tabla `envios` ya existe y sirve tal cual (transportista, número de seguimiento, costo, estado). El punto donde engancharlo ya existe: `PagoService`, al confirmar el pago.
 - **Lo que tiene que definir Tierra:**

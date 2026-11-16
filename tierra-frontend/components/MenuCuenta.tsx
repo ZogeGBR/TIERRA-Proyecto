@@ -5,16 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { User, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
 
 // Reemplaza al botón de usuario que antes no hacía nada.
 //
-// Sin sesión es un enlace a /login que se acuerda de dónde estaba la persona,
-// para devolverla ahí después de entrar. Con sesión, un menú con su nombre y
-// la opción de salir.
+// Sin sesión es un enlace a /login (ingreso por código) que se acuerda de
+// dónde estaba la persona, para devolverla ahí después de entrar. Con sesión,
+// un menú con su nombre y la opción de salir. "Mis pedidos" (clientes) vuelve
+// con la tarea 19: ver la nota en Header.tsx.
 export function MenuCuenta() {
   const { usuario, cargando, cerrarSesion } = useAuth();
-  const { vaciarCarrito } = useCart();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,11 +46,9 @@ export function MenuCuenta() {
     setAbierto(false);
     await cerrarSesion();
 
-    // El carrito vive en localStorage por navegador, no por usuario: sin esto,
-    // la próxima persona que use esta computadora vería los productos de la
-    // anterior. Sincronizarlo con el backend es trabajo de la fase 2.
-    vaciarCarrito();
-
+    // El carrito NO se vacía al salir: como comprar no exige cuenta, el
+    // carrito es del navegador (tarea 17), no de la sesión. Vaciarlo acá le
+    // borraría la compra a quien solo quería cerrar sesión.
     router.push("/");
   }
 
@@ -67,11 +64,14 @@ export function MenuCuenta() {
   }
 
   if (!usuario) {
+    // Desde las propias pantallas de acceso no se manda `redirect`: volvería
+    // a la misma pantalla.
+    const enAcceso = pathname.startsWith("/login") || pathname.startsWith("/equipo");
     return (
       <Link
-        href={`/login?redirect=${encodeURIComponent(pathname)}`}
+        href={enAcceso ? "/login" : `/login?redirect=${encodeURIComponent(pathname)}`}
         className="btn-icono"
-        aria-label="Iniciar sesión"
+        aria-label="Ver mis pedidos (ingresar con un código)"
       >
         <User size={16} />
       </Link>

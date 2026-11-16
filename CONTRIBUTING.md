@@ -363,7 +363,7 @@ Si alguno de esos commits agrega una migración, el backend la aplica solo al ar
 Por falta de tiempo, las tareas que quedan de la Fase 2 no esperan una revisión de otra persona para mergearse. La revisión se reemplaza por **verificación**:
 
 1. **Una tarea = una rama desde `develop` = un PR.** Las convenciones de nombres (§4.2) y commits (§5) no cambian.
-2. **Quien abre el PR adjunta la verificación** en la descripción: tests del backend (`.\mvnw clean test`), los scripts `probar-*.ps1` que correspondan contra el backend y la base reales, y, si se tocó el frontend, `npm run build`, `npm run lint` y la prueba de las pantallas afectadas.
+2. **Quien abre el PR adjunta la verificación** en la descripción: tests del backend (`.\mvnw clean test`), los scripts `probar-*.ps1` que correspondan contra el backend y la base reales, y, si se tocó el frontend, `npm test`, `npm run lint`, `npm run build` y la prueba de las pantallas afectadas.
 3. **Antes de mergear se repite una verificación corta en otra máquina:** `.\mvnw clean test` y el script de la tarea.
 4. **Mergea sólo Matías, con *Squash and merge*** (§4.4). Nadie más mergea a `develop`, para que haya un único punto que controla lo que entra.
 5. **Después de cada merge**, se actualiza `develop` y se vuelve a correr todo (§4.11) antes de empezar la tarea siguiente.
@@ -649,7 +649,7 @@ Cada decisión lleva un **estado**: *propuesta*, *aceptada*, *modificada por NNN
 - [ ] El backend compila y arranca (`.\mvnw spring-boot:run`)
 - [ ] Los tests del backend pasan (`.\mvnw clean test`)
 - [ ] Si tocaste la API, corriste los scripts de verificación que correspondan (§6.5) y todos dicen `OK`
-- [ ] El frontend compila (`npm run build`)
+- [ ] El frontend compila (`npm run build`) y sus pruebas pasan (`npm test`)
 - [ ] `git status` no muestra archivos que no querías subir
 - [ ] No hay credenciales, tokens ni rutas absolutas de tu máquina en el diff
 - [ ] Si tocaste el esquema, hay una migración nueva y las entidades están actualizadas

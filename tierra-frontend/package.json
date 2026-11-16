@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --import tsx --test tests/unitarias.test.ts"
   },
   "dependencies": {
     "lucide-react": "0.577.0",
@@ -23,6 +24,7 @@
     "eslint-config-next": "15.5.27",
     "postcss": "8.5.29",
     "tailwindcss": "3.4.7",
+    "tsx": "4.23.15",
     "typescript": "5.5.4"
   }
 }

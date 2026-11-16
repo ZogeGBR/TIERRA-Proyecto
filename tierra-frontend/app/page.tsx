@@ -1,72 +1,70 @@
+import { TituloPalabras } from "@/components/TituloPalabras";
 import Link from "next/link";
 import { Backpack, Snowflake, Truck, CreditCard, Award, Headphones } from "lucide-react";
 import { CategoryCard } from "@/components/CategoryCard";
-import { ProductCard } from "@/components/ProductCard";
+import { CarruselProductos } from "@/components/CarruselProductos";
 import { HeroCarrusel } from "@/components/HeroCarrusel";
 import { api } from "@/lib/api";
+import type { OpcionCategoria } from "@/lib/types";
+import { Revelar } from "@/components/Revelar";
+import { FondoOndas } from "@/components/FondoOndas";
+import { TarjetaFija } from "@/components/TarjetaFija";
 
-// IDs fijos por ahora — mismos valores que carga
-// tierra-infra/init-db/02-seed-data.sql. En producción esto se reemplaza
-// por un fetch a GET /api/categorias (a implementar en el backend) para
-// no tener IDs hardcodeados acá.
+// Las tarjetas de categorías salen de GET /api/categorias: solo las de primer
+// nivel (las subcategorías, como "Ropa deportiva", aparecen en el filtro del
+// catálogo). La imagen se elige por slug porque cada foto trae el nombre de
+// la categoría escrito adentro; una categoría sin foto propia se dibuja con
+// su nombre en texto (ver CategoryCard).
 //
-// Nota sobre "Accesorios": el boceto trae una foto para esa categoría,
-// pero el catálogo todavía no tiene productos cargados como "Accesorios"
-// propiamente — apunta a Mochilas, que es lo más cercano que existe hoy.
-const categorias = [
-  { nombre: "Bicicletas", id: "c0000000-0000-0000-0000-000000000001", imagen: "/images/categories/bicicletas.png" },
-  { nombre: "Ropa", id: "c0000000-0000-0000-0000-000000000003", imagen: "/images/categories/ropa.png" },
-  { nombre: "Carpas", id: "c0000000-0000-0000-0000-000000000005", imagen: "/images/categories/carpas.png" },
-  { nombre: "Cascos", id: "c0000000-0000-0000-0000-000000000007", imagen: "/images/categories/cascos.png" },
-  { nombre: "Accesorios", id: "c0000000-0000-0000-0000-000000000006", imagen: "/images/categories/accesorios.png" }
-];
+// accesorios.png queda sin usar hasta que exista una categoría con ese slug.
+const IMAGEN_POR_SLUG: Record<string, string> = {
+  bicicletas: "/images/categories/bicicletas.png",
+  ropa: "/images/categories/ropa.png",
+  carpas: "/images/categories/carpas.png",
+  cascos: "/images/categories/cascos.png",
+  accesorios: "/images/categories/accesorios.png"
+};
+
+async function categoriasDePrimerNivel(): Promise<OpcionCategoria[]> {
+  try {
+    return (await api.categorias.listar()).filter((c) => !c.categoriaPadreId);
+  } catch {
+    // Si el backend no responde, la home se muestra igual, sin esta sección.
+    return [];
+  }
+}
 
 // Rotan por las tarjetas de categoría para que no sea el mismo tono
 // repetido cinco veces — variedad, no aleatoriedad (siempre el mismo
 // color para la misma posición, para que sea predecible entre recargas).
 const COLORES_ACENTO = ["terracota", "verde", "ambar", "terracota", "verde"] as const;
 
-// Los 5 destacados del boceto original, en el mismo orden. Se busca cada
-// uno por id dentro de su categoría (no simplemente "el primero de la
-// categoría") para no depender del orden en que Postgres devuelva las filas.
-const destacadosConfig = [
-  { categoriaId: "c0000000-0000-0000-0000-000000000006", productoId: "d0000000-0000-0000-0000-000000000003" }, // Mochila
-  { categoriaId: "c0000000-0000-0000-0000-000000000003", productoId: "d0000000-0000-0000-0000-000000000002" }, // Campera
-  { categoriaId: "c0000000-0000-0000-0000-000000000005", productoId: "d0000000-0000-0000-0000-000000000004" }, // Carpa
-  { categoriaId: "c0000000-0000-0000-0000-000000000007", productoId: "d0000000-0000-0000-0000-000000000007" }, // Casco
-  { categoriaId: "c0000000-0000-0000-0000-000000000001", productoId: "d0000000-0000-0000-0000-000000000001" }  // Bicicleta
-];
-
 export default async function HomePage() {
-  let destacados: Awaited<ReturnType<typeof api.productos.listarPorCategoria>> = [];
-  try {
-    const listas = await Promise.all(
-      destacadosConfig.map((d) => api.productos.listarPorCategoria(d.categoriaId))
-    );
-    destacados = destacadosConfig
-      .map((cfg, i) => listas[i].find((p) => p.id === cfg.productoId))
-      .filter((p): p is NonNullable<typeof p> => Boolean(p));
-  } catch {
-    // Si el backend no está levantado, la home igual se muestra sin destacados.
-  }
+  // Ranking "más vendidos". api.productos.ranking nunca lanza: si no está
+  // disponible o no llega al mínimo de productos, la sección no se muestra.
+  const [vendidos, categorias] = await Promise.all([api.productos.ranking("vendidos"), categoriasDePrimerNivel()]);
 
   return (
     <div>
-      <section className="relative h-[560px] flex items-center overflow-hidden bg-tierra-crema-oscuro">
+      {/* Hero + franja de beneficios. La tarjeta (TarjetaFija) queda estática en
+          su lugar mientras las fotos pasan por detrás, y se desvanece sin
+          moverse cuando el hero termina de pasar. */}
+      <div className="relative">
+      <section data-hero className="relative h-[640px] overflow-hidden bg-tierra-crema-oscuro">
         {/* Carrusel de fotos reales del equipo en uso. Ver components/HeroCarrusel.tsx.
-            La tarjeta de texto es semitransparente y SIN backdrop-blur: el blur
-            combinado con el header sticky (que también usa blur) generaba un
-            efecto de "se queda pegada" al scrollear rápido — era un problema de
-            rendimiento del navegador, no de posicionamiento (no hay sticky/fixed
-            acá). Sacar el blur resuelve las dos cosas a la vez: menos opaca y
-            sin el glitch visual. */}
+            La tarjeta es semitransparente y SIN backdrop-blur: el blur combinado
+            con el header sticky (que también usa blur) generaba un glitch al
+            scrollear rápido (problema de rendimiento del navegador). */}
         <HeroCarrusel />
+      </section>
 
-        <div className="relative z-20 max-w-6xl mx-auto px-6 w-full">
-          <div className="max-w-md bg-white/55 rounded-3xl p-8 shadow-lg">
-            <h1 className="font-serif text-4xl md:text-5xl font-semibold text-tierra-terracota-oscuro leading-tight drop-shadow-sm">
-              Equipos para tus aventuras en la montaña
-            </h1>
+      <TarjetaFija>
+            <TituloPalabras
+              como="h1"
+              texto="Equipos para tus aventuras en la montaña"
+              destacar="aventuras"
+              className="font-serif text-4xl md:text-5xl font-semibold text-tierra-terracota-oscuro leading-tight drop-shadow-sm"
+            />
             <p className="mt-4 text-tierra-terracota-oscuro/90 drop-shadow-sm">
               Todo lo que necesitás para explorar sin límites.
             </p>
@@ -80,14 +78,12 @@ export default async function HomePage() {
                 Alquiler de invierno
               </Link>
             </div>
-          </div>
-        </div>
-      </section>
+      </TarjetaFija>
 
       <section className="border-b border-tierra-crema-oscuro py-6 bg-gradient-to-r from-tierra-crema via-white to-tierra-crema">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { Icono: Truck, texto: "Envíos\na todo el país", color: "bg-tierra-terracota" },
+            { Icono: Truck, texto: "Envíos a\n4 provincias patagónicas", color: "bg-tierra-terracota" },
             { Icono: CreditCard, texto: "Comprá en\ncuotas", color: "bg-tierra-verde" },
             { Icono: Award, texto: "Productos\nseleccionados", color: "bg-tierra-ambar" },
             { Icono: Headphones, texto: "Asesoramiento\npersonalizado", color: "bg-tierra-terracota-oscuro" }
@@ -101,58 +97,51 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+      </div>
 
       {/* Fondo "papel rasgado": CSS provisto por el usuario (ver globals.css,
           sección "FONDO PAPEL RASGADO"), tal cual salvo las reglas de
           tarjetas — esas las siguen manejando CategoryCard/ProductCard,
           sin cambios acá. */}
       <div className="catalogo">
-        <div className="craquelado craquelado-top" />
-        <div className="craquelado craquelado-bottom" />
+        <FondoOndas />
 
+        <div className="papel-marco">
+        <div className="papel-sombra" aria-hidden="true"><i /></div>
         <section className="papel-central">
           <div className="contenido-catalogo">
+            {categorias.length > 0 && (
             <section className="seccion">
-              <h2 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Categorías</h2>
+              <TituloPalabras como="h2" modo="scroll" texto="Categorías" className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6" />
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {categorias.map((cat, i) => (
+                  <Revelar key={cat.id} retraso={i * 70}>
                   <CategoryCard
-                    key={cat.id}
                     nombre={cat.nombre}
                     categoriaId={cat.id}
-                    imagen={cat.imagen}
+                    imagen={IMAGEN_POR_SLUG[cat.slug]}
                     colorAcento={COLORES_ACENTO[i % COLORES_ACENTO.length]}
                   />
+                  </Revelar>
                 ))}
               </div>
             </section>
-
-            {destacados.length > 0 && (
-              <section className="seccion">
-                <h2 className="font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro mb-6">Productos destacados</h2>
-                <div className="flex gap-5 overflow-x-auto pb-2 -mx-1 px-1">
-                  {destacados.map((p) => (
-                    <div key={p.id} className="w-48 shrink-0">
-                      <ProductCard producto={p} />
-                    </div>
-                  ))}
-                </div>
-              </section>
             )}
+
+            <CarruselProductos listas={{ vendidos }} />
           </div>
         </section>
+        </div>
       </div>
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-tierra-ambar/20 via-tierra-crema-oscuro to-tierra-verde/15">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/brand/cordillera.png"
-          alt=""
-          className="hidden md:block absolute right-0 bottom-0 w-1/2 h-full object-cover object-bottom opacity-70"
-        />
+      {/* Banda "Somos Tierra": fondo quieto y el dibujo de la cordillera de siempre. */}
+      <section data-banda-cordillera className="relative overflow-hidden bg-gradient-to-br from-tierra-ambar/25 via-tierra-crema-oscuro to-tierra-verde/15">
+        <div className="cordillera-banda" aria-hidden="true" />
+        {/* Velo suave detrás del texto para que se lea sobre el dibujo */}
+        <div className="pointer-events-none absolute inset-0 velo-lectura" aria-hidden="true" />
         <div className="relative max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/brand/sello.png" alt="Sello Tierra" className="w-24 h-24 shrink-0" />
+          <img src="/images/brand/sello.png" alt="Sello Tierra" className="w-24 h-24 shrink-0 drop-shadow-md" />
           <div className="flex-1 text-center md:text-left">
             <p className="font-serif text-2xl font-semibold uppercase text-tierra-terracota-oscuro">Somos Tierra</p>
             <p className="mt-1 text-tierra-terracota-oscuro/80">
@@ -160,9 +149,9 @@ export default async function HomePage() {
               sea una experiencia única.
             </p>
           </div>
-          <a href="#" className="btn-primario whitespace-nowrap">
+          <Link href="/sobre-tierra" className="btn-primario whitespace-nowrap">
             Conocenos
-          </a>
+          </Link>
         </div>
       </section>
     </div>

@@ -1,5 +1,11 @@
 package com.tierra.ecommerce.service;
 
+import com.tierra.ecommerce.repository.PedidoItemRepository;
+import com.tierra.ecommerce.enums.EstadoPedido;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import com.tierra.ecommerce.dto.FiltrosCatalogo;
 import com.tierra.ecommerce.dto.OpcionesFiltroDTO;
 import com.tierra.ecommerce.dto.PaginaDTO;
@@ -51,6 +57,7 @@ class ProductoServiceTest {
     @Mock private VarianteProductoRepository varianteRepository;
     @Mock private ImagenProductoRepository imagenRepository;
     @Mock private CategoriaRepository categoriaRepository;
+    @Mock private PedidoItemRepository pedidoItemRepository;
     @InjectMocks private ProductoService productoService;
 
     private static final FiltrosCatalogo SIN_FILTROS = FiltrosCatalogo.de(null, null, null, null, null, null, null, null);
@@ -240,5 +247,76 @@ class ProductoServiceTest {
             public UUID getProductoId() { return productoId; }
             public String getUrl() { return url; }
         };
+    }
+
+    // ---------- Más vendidos ----------
+
+    private static Producto productoVendido(UUID id, String nombre) {
+        Marca marca = new Marca();
+        marca.setNombre("Marca");
+        Categoria categoria = new Categoria();
+        categoria.setNombre("Categoría");
+        Producto p = new Producto();
+        p.setId(id);
+        p.setNombre(nombre);
+        p.setMarca(marca);
+        p.setCategoria(categoria);
+        p.setPrecio(BigDecimal.valueOf(1000));
+        p.setActivo(true);
+        return p;
+    }
+
+    @Test
+    void masVendidosRespetaElOrdenDelRankingAunqueLosProductosVenganDesordenados() {
+        UUID a = UUID.randomUUID(), b = UUID.randomUUID(), c = UUID.randomUUID();
+        when(pedidoItemRepository.findMasVendidos(any(), any(), any())).thenReturn(List.of(b, a, c));
+        when(productoRepository.findByIdIn(any())).thenReturn(List.of(
+                productoVendido(a, "A"), productoVendido(c, "C"), productoVendido(b, "B")));
+        when(imagenRepository.findImagenesDe(any())).thenReturn(List.of());
+
+        var lista = productoService.masVendidos(8);
+
+        assertEquals(List.of(b, a, c),
+                lista.stream().map(ProductoResumenDTO::id).toList());
+        assertEquals("Marca", lista.get(0).marca());
+    }
+
+    @Test
+    void masVendidosConMenosDeTresDevuelveVacioSinBuscarProductos() {
+        when(pedidoItemRepository.findMasVendidos(any(), any(), any()))
+                .thenReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
+
+        assertTrue(productoService.masVendidos(8).isEmpty());
+        verify(productoRepository, never()).findByIdIn(any());
+    }
+
+    @Test
+    void masVendidosCuentaLosPagadosDeLosUltimosNoventaDiasYPideElLimite() {
+        when(pedidoItemRepository.findMasVendidos(any(), any(), any())).thenReturn(List.of());
+        LocalDateTime antes = LocalDateTime.now().minusDays(90);
+
+        productoService.masVendidos(5);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<EstadoPedido>> estados =
+                ArgumentCaptor.forClass(Collection.class);
+        ArgumentCaptor<LocalDateTime> desde = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<Pageable> pagina =
+                ArgumentCaptor.forClass(Pageable.class);
+        verify(pedidoItemRepository).findMasVendidos(estados.capture(), desde.capture(), pagina.capture());
+        assertEquals(Set.of(
+                EstadoPedido.PAGADO, EstadoPedido.PREPARANDO,
+                EstadoPedido.ENVIADO, EstadoPedido.ENTREGADO),
+                Set.copyOf(estados.getValue()));
+        assertFalse(estados.getValue().contains(EstadoPedido.CANCELADO));
+        assertTrue(!desde.getValue().isBefore(antes)
+                && desde.getValue().isBefore(antes.plusMinutes(1)), "desde = hace 90 días");
+        assertEquals(5, pagina.getValue().getPageSize());
+    }
+
+    @Test
+    void masVendidosConUnLimiteFueraDeRangoEsUnError() {
+        assertThrows(IllegalArgumentException.class, () -> productoService.masVendidos(2));
+        assertThrows(IllegalArgumentException.class, () -> productoService.masVendidos(9));
     }
 }

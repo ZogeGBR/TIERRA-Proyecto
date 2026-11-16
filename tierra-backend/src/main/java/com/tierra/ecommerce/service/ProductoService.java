@@ -9,10 +9,12 @@ import com.tierra.ecommerce.entity.Categoria;
 import com.tierra.ecommerce.entity.ImagenProducto;
 import com.tierra.ecommerce.entity.Producto;
 import com.tierra.ecommerce.entity.VarianteProducto;
+import com.tierra.ecommerce.enums.EstadoPedido;
 import com.tierra.ecommerce.enums.OrdenCatalogo;
 import com.tierra.ecommerce.exception.RecursoNoEncontradoException;
 import com.tierra.ecommerce.repository.CategoriaRepository;
 import com.tierra.ecommerce.repository.ImagenProductoRepository;
+import com.tierra.ecommerce.repository.PedidoItemRepository;
 import com.tierra.ecommerce.repository.ProductoEspecificaciones;
 import com.tierra.ecommerce.repository.ProductoRepository;
 import com.tierra.ecommerce.repository.VarianteProductoRepository;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Collator;
+import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,19 +48,56 @@ public class ProductoService {
     // cálculo del desplazamiento (pagina * tamanio) en la consulta.
     public static final int PAGINA_MAXIMA = 10_000;
 
+    // "Más vendidos" (regla acordada con Tierra): pedidos pagados de los
+    // últimos 90 días, como máximo 8 productos, y nada si hay menos de 3
+    // (una lista de 1 o 2 parece vacía, no "lo más vendido").
+    public static final int DIAS_MAS_VENDIDOS = 90;
+    public static final int MAXIMO_MAS_VENDIDOS = 8;
+    public static final int MINIMO_MAS_VENDIDOS = 3;
+    // Pagado y lo que viene después. Un cancelado no cuenta, aunque se haya
+    // pagado y reembolsado: no fue una venta.
+    static final Set<EstadoPedido> ESTADOS_VENDIDOS = Set.of(
+            EstadoPedido.PAGADO, EstadoPedido.PREPARANDO, EstadoPedido.ENVIADO, EstadoPedido.ENTREGADO);
+
     private final ProductoRepository productoRepository;
     private final VarianteProductoRepository varianteRepository;
     private final ImagenProductoRepository imagenRepository;
     private final CategoriaRepository categoriaRepository;
+    private final PedidoItemRepository pedidoItemRepository;
 
     public ProductoService(ProductoRepository productoRepository,
                            VarianteProductoRepository varianteRepository,
                            ImagenProductoRepository imagenRepository,
-                           CategoriaRepository categoriaRepository) {
+                           CategoriaRepository categoriaRepository,
+                           PedidoItemRepository pedidoItemRepository) {
         this.productoRepository = productoRepository;
         this.varianteRepository = varianteRepository;
         this.imagenRepository = imagenRepository;
         this.categoriaRepository = categoriaRepository;
+        this.pedidoItemRepository = pedidoItemRepository;
+    }
+
+    // Los más vendidos, en el mismo formato que las tarjetas del catálogo.
+    // Tres consultas, sin importar cuántos sean: el ranking, los productos
+    // (con marca y categoría) y sus imágenes.
+    public List<ProductoResumenDTO> masVendidos(int limite) {
+        if (limite < MINIMO_MAS_VENDIDOS || limite > MAXIMO_MAS_VENDIDOS) {
+            throw new IllegalArgumentException("El límite tiene que estar entre "
+                    + MINIMO_MAS_VENDIDOS + " y " + MAXIMO_MAS_VENDIDOS);
+        }
+        List<UUID> ids = pedidoItemRepository.findMasVendidos(ESTADOS_VENDIDOS,
+                LocalDateTime.now().minusDays(DIAS_MAS_VENDIDOS), PageRequest.of(0, limite));
+        if (ids.size() < MINIMO_MAS_VENDIDOS) {
+            return List.of();
+        }
+        Map<UUID, Producto> porId = new HashMap<>();
+        for (Producto p : productoRepository.findByIdIn(ids)) {
+            porId.put(p.getId(), p);
+        }
+        // En el orden del ranking: la consulta por ids no lo respeta.
+        List<Producto> ordenados = ids.stream().map(porId::get).filter(Objects::nonNull).toList();
+        Map<UUID, String> imagenes = imagenesPrincipales(ordenados);
+        return ordenados.stream().map(p -> aResumen(p, imagenes.get(p.getId()))).toList();
     }
 
     // Catálogo con filtros combinables y paginación. Siempre la misma

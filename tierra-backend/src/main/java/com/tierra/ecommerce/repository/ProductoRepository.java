@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 public interface ProductoRepository extends JpaRepository<Producto, UUID>, JpaSpecificationExecutor<Producto> {
@@ -19,4 +21,9 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID>, JpaSp
     @Override
     @EntityGraph(attributePaths = {"marca", "categoria"})
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
+
+    // Varios productos por id, con marca y categoría en la misma consulta
+    // ("más vendidos"). No garantiza ningún orden.
+    @EntityGraph(attributePaths = {"marca", "categoria"})
+    List<Producto> findByIdIn(Collection<UUID> ids);
 }

@@ -230,12 +230,12 @@ export const api = {
       return { talles: textos(r?.talles), colores: textos(r?.colores) };
     },
     // Ranking "más vendidos" de la home (ver lib/rankings.ts). Nunca lanza:
-    // si el endpoint no existe o falla, devuelve [] y la home oculta la
-    // sección en vez de mostrar un orden inventado.
+    // si falla, devuelve [] y la home oculta la sección en vez de mostrar un
+    // orden inventado. El backend ya responde [] con menos de 3 productos.
     ranking: async (tipo: TipoRanking): Promise<ProductoResumen[]> => {
       try {
         const ruta = { vendidos: "mas-vendidos" }[tipo];
-        return normalizarRanking(await apiFetch<unknown>(`/productos/${ruta}?limite=${LIMITE_RANKING}`, { publico: true }));
+        return normalizarRanking(await apiFetch<unknown>(`/productos/${ruta}?limite=${LIMITE_RANKING}`));
       } catch {
         return [];
       }

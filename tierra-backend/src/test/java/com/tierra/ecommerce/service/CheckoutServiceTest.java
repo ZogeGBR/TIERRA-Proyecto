@@ -39,6 +39,7 @@ class CheckoutServiceTest {
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private PedidoService pedidoService;
     @Mock private PagoService pagoService;
+    @Mock private DatosEntregaService datosEntregaService;
     @Mock private PlatformTransactionManager transactionManager;
 
     private CheckoutService checkoutService;
@@ -49,7 +50,7 @@ class CheckoutServiceTest {
 
     @BeforeEach
     void setUp() {
-        checkoutService = new CheckoutService(usuarioRepository, pedidoService, pagoService, transactionManager);
+        checkoutService = new CheckoutService(usuarioRepository, pedidoService, pagoService, datosEntregaService, transactionManager);
         lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         lenient().when(pedidoService.crearPedido(any(), any())).thenAnswer(i -> {
             Pedido p = new Pedido();
@@ -72,11 +73,11 @@ class CheckoutServiceTest {
     }
 
     private CheckoutRequest conRetiro(String email) {
-        return new CheckoutRequest("Ana Pérez", email, "2945 123456", null, TipoEntrega.RETIRO_LOCAL, null, items);
+        return new CheckoutRequest("Ana Pérez", email, "2945 123456", null, TipoEntrega.RETIRO_LOCAL, null, items, null);
     }
 
     private CheckoutRequest conEnvio(String dni, CheckoutRequest.DireccionCheckout direccion) {
-        return new CheckoutRequest("Ana Pérez", EMAIL, "2945 123456", dni, TipoEntrega.ENVIO_DOMICILIO, direccion, items);
+        return new CheckoutRequest("Ana Pérez", EMAIL, "2945 123456", dni, TipoEntrega.ENVIO_DOMICILIO, direccion, items, null);
     }
 
     private static CheckoutRequest.DireccionCheckout direccion() {
@@ -325,7 +326,7 @@ class CheckoutServiceTest {
     @Test
     void conRetiroSeIgnoranDniYDireccion() {
         CheckoutRequest r = new CheckoutRequest("Ana Pérez", EMAIL, "2945 123456", "30111222",
-                TipoEntrega.RETIRO_LOCAL, direccion(), items);
+                TipoEntrega.RETIRO_LOCAL, direccion(), items, null);
 
         NuevoPedido datos = CheckoutService.validarYArmar(r);
 
@@ -335,12 +336,78 @@ class CheckoutServiceTest {
 
     @Test
     void elTelefonoTieneQueTenerEntre8Y15Numeros() {
-        CheckoutRequest corto = new CheckoutRequest("Ana", EMAIL, "123-4567", null, TipoEntrega.RETIRO_LOCAL, null, items);
-        CheckoutRequest largo = new CheckoutRequest("Ana", EMAIL, "+54 9 2945 1234 56789", null, TipoEntrega.RETIRO_LOCAL, null, items);
-        CheckoutRequest bien = new CheckoutRequest("Ana", EMAIL, "+54 9 2945 12-3456", null, TipoEntrega.RETIRO_LOCAL, null, items);
+        CheckoutRequest corto = new CheckoutRequest("Ana", EMAIL, "123-4567", null, TipoEntrega.RETIRO_LOCAL, null, items, null);
+        CheckoutRequest largo = new CheckoutRequest("Ana", EMAIL, "+54 9 2945 1234 56789", null, TipoEntrega.RETIRO_LOCAL, null, items, null);
+        CheckoutRequest bien = new CheckoutRequest("Ana", EMAIL, "+54 9 2945 12-3456", null, TipoEntrega.RETIRO_LOCAL, null, items, null);
 
         assertThrows(IllegalArgumentException.class, () -> CheckoutService.validarYArmar(corto));
         assertThrows(IllegalArgumentException.class, () -> CheckoutService.validarYArmar(largo));
         assertEquals("+54 9 2945 12-3456", CheckoutService.validarYArmar(bien).contactoTelefono());
+    }
+
+    // ---------- Guardar mis datos (tarea 22) ----------
+
+    private CheckoutRequest conCasilla(String email, Boolean guardar) {
+        return new CheckoutRequest("Ana Pérez", email, "2945 123456", "30111222", TipoEntrega.ENVIO_DOMICILIO,
+                direccion(), items, guardar);
+    }
+
+    @Test
+    void conSesionDeClienteYLaCasillaTildadaSeGuardanLosDatosDelPedido() {
+        Usuario deLaSesion = usuario("cliente@example.com", RolUsuario.CLIENTE);
+        when(usuarioRepository.findById(deLaSesion.getId())).thenReturn(Optional.of(deLaSesion));
+
+        checkoutService.comprar(conCasilla("otra@example.com", true), new UsuarioAutenticado(deLaSesion));
+
+        ArgumentCaptor<NuevoPedido> datos = ArgumentCaptor.forClass(NuevoPedido.class);
+        verify(datosEntregaService).guardar(eq(deLaSesion), datos.capture());
+        assertSame(datosDelPedido(), datos.getValue());
+        // Se guardan antes de que la transacción confirme: van juntos con el pedido.
+        var orden = inOrder(pedidoService, datosEntregaService, transactionManager);
+        orden.verify(pedidoService).crearPedido(any(), any());
+        orden.verify(datosEntregaService).guardar(any(), any());
+        orden.verify(transactionManager).commit(any());
+    }
+
+    @Test
+    void sinSesionLaCasillaSeIgnoraYLaCuentaNoSeToca() {
+        when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario(EMAIL, RolUsuario.CLIENTE)));
+
+        checkoutService.comprar(conCasilla(EMAIL, true), null);
+
+        verifyNoInteractions(datosEntregaService);
+    }
+
+    @Test
+    void conSesionDelEquipoLaCasillaSeIgnora() {
+        Usuario operador = usuario("operador@tierra.esquel", RolUsuario.OPERADOR);
+        when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(usuario(EMAIL, RolUsuario.CLIENTE)));
+
+        checkoutService.comprar(conCasilla(EMAIL, true), new UsuarioAutenticado(operador));
+
+        verifyNoInteractions(datosEntregaService);
+    }
+
+    @Test
+    void conSesionDeClienteSinLaCasillaNoSeGuardaNada() {
+        Usuario deLaSesion = usuario("cliente@example.com", RolUsuario.CLIENTE);
+        when(usuarioRepository.findById(deLaSesion.getId())).thenReturn(Optional.of(deLaSesion));
+
+        checkoutService.comprar(conCasilla(EMAIL, false), new UsuarioAutenticado(deLaSesion));
+        checkoutService.comprar(conCasilla(EMAIL, null), new UsuarioAutenticado(deLaSesion));
+
+        verifyNoInteractions(datosEntregaService);
+    }
+
+    @Test
+    void siElPedidoNoSeCreaNoSeGuardanLosDatos() {
+        Usuario deLaSesion = usuario("cliente@example.com", RolUsuario.CLIENTE);
+        when(usuarioRepository.findById(deLaSesion.getId())).thenReturn(Optional.of(deLaSesion));
+        when(pedidoService.crearPedido(any(), any())).thenThrow(new IllegalArgumentException("fuera de zona"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> checkoutService.comprar(conCasilla(EMAIL, true), new UsuarioAutenticado(deLaSesion)));
+
+        verifyNoInteractions(datosEntregaService);
     }
 }

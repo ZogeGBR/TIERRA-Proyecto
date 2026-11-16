@@ -43,7 +43,9 @@ Sesión en cookie (decisión 0003), con dos canales de acceso (decisión 0005):
 - **Clientes:** sin contraseña. Piden un código de seis dígitos por email
   (`POST /api/auth/codigo`) y lo verifican (`POST /api/auth/codigo/verificar`).
   Comprar no exige cuenta: el checkout crea el cliente si hace falta, sin
-  contraseña y sin abrir sesión.
+  contraseña y sin abrir sesión. Con sesión, el cliente puede guardar sus
+  datos para la próxima compra desde el checkout, y verlos o borrarlos en
+  `/api/cuenta/datos-entrega`.
 - **Equipo** (Administrador y Operador): email y contraseña, en
   `POST /api/auth/equipo/login`.
 

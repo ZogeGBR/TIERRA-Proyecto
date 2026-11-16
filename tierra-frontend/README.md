@@ -15,7 +15,7 @@ El backend tiene que estar levantado (ver [CONTRIBUTING.md §6](../CONTRIBUTING.
 - **Clientes:** sin contraseña. En `/login` piden un código de 6 dígitos por email y lo escriben. En desarrollo el código aparece en el log del backend y en `target/codigos-dev/` (CONTRIBUTING §6.3).
 - **Equipo:** entra por `/equipo`, con email y contraseña. No se enlaza desde el sitio y no hay registro público.
 - **El carrito vive en el navegador** (`localStorage`); cerrar sesión no lo borra.
-- **Comprar no exige cuenta.** El checkout pide nombre, email y teléfono; con envío a domicilio, también DNI y dirección (piso y departamento son opcionales). Crea el pedido con `POST /api/checkout`, que no abre sesión, y manda a Mercado Pago. Con sesión de cliente, el pedido va a esa cuenta y el email no se puede cambiar.
+- **Comprar no exige cuenta.** El checkout pide nombre, email y teléfono; con envío a domicilio, también DNI y dirección (piso y departamento son opcionales). Crea el pedido con `POST /api/checkout`, que no abre sesión, y manda a Mercado Pago. Con sesión de cliente, el pedido va a esa cuenta y el email no se puede cambiar; además puede guardar sus datos para la próxima compra (la casilla, destildada por defecto), que se precargan y se pueden borrar desde el mismo checkout.
 
 ## Integración por etapas
 
@@ -25,7 +25,7 @@ El diseño viene de la rama `Zoe-Frontend` y se integra por etapas, cada una ata
 |---|---|---|
 | 0 ✅ | Diseño completo, home, catálogo, detalle, carrito, `/login`, `/equipo`, alquiler, Sobre Tierra, páginas de vuelta de Mercado Pago | Lo que ya existe |
 | 1 ✅ | Catálogo con búsqueda, filtros (categoría con subcategorías, marca, género, talle, color, precio), orden y paginación contra el backend real | Tarea 6 |
-| 2 | Checkout sin cuenta y cotización de envío ✅. Falta: datos guardados para la próxima compra | Tareas 9 y 10 ✅, 22 |
+| 2 | Checkout sin cuenta, cotización de envío y datos guardados para la próxima compra ✅ | Tareas 9, 10 y 22 ✅ |
 | 3 | "Mis pedidos" (`/cuenta/pedidos`) | Tarea 19 |
 | 4 | Estimador de alquiler con los tipos y precios reales | Tarea 20 |
 

@@ -138,6 +138,9 @@ public class SecurityConfig {
                     // en PagoService y es de la tarea 6 — está anotada como
                     // hallazgo para quien la haga.
                     .requestMatchers(HttpMethod.POST, "/api/pagos/pedidos/*/preferencia").authenticated()
+                    // La cuenta del cliente: datos guardados para la próxima
+                    // compra (tarea 22). Solo clientes: el equipo no compra.
+                    .requestMatchers("/api/cuenta/**").hasRole("CLIENTE")
 
                     // --- Panel de administración (fase 3) ---
                     // Todavía no existe ningún endpoint bajo /api/admin. La

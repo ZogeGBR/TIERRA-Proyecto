@@ -130,7 +130,8 @@ Un cliente **con sesión** puede pedir que el checkout recuerde sus datos, y la 
 - Si está tildada, el checkout guarda en la cuenta nombre, teléfono, DNI y dirección (`usuarios.nombre`, `usuarios.telefono`, `usuarios.dni` y una sola dirección en `direcciones`, marcada como predeterminada). Se guardan en la misma transacción que el pedido.
 - La próxima compra con sesión precarga esos datos, y el cliente puede cambiarlos antes de comprar.
 - *"Borrar mis datos guardados"*, en el mismo checkout, los elimina de la cuenta. No toca los pedidos.
-- Sin sesión, la casilla no aparece, y si el pedido la trae igual, el backend la ignora.
+- Sin sesión, la casilla no aparece, y si el pedido la trae igual, el backend la ignora. Con la sesión del equipo, lo mismo.
+- Con retiro en el local se guardan nombre y teléfono, y el DNI y la dirección que ya estaban se conservan: retirar una vez no borra la dirección de siempre.
 
 **Por qué solo con sesión.** Quien tiene sesión demostró con el código que el email es suyo. Sin sesión, cualquiera puede escribir cualquier email, y guardar datos en esa cuenta sería modificar la cuenta de otra persona: el problema que la regla de "los datos van en el pedido" evita.
 
@@ -138,7 +139,7 @@ Un cliente **con sesión** puede pedir que el checkout recuerde sus datos, y la 
 
 **Una sola dirección, no una libreta.** Alcanza para el caso real, que es comprar de nuevo con el mismo destino. Una libreta de varias direcciones queda fuera del alcance.
 
-**Endpoints:** `GET /api/cuenta/datos-entrega` y `DELETE /api/cuenta/datos-entrega`, rol `CLIENTE`. No hay endpoint para escribir: el único camino es el checkout con la casilla tildada, para que exista una sola puerta de escritura.
+**Endpoints:** `GET /api/cuenta/datos-entrega` y `DELETE /api/cuenta/datos-entrega`, rol `CLIENTE`. No hay endpoint para escribir: el único camino es el checkout con la casilla tildada, para que exista una sola puerta de escritura. Sin datos guardados, el `GET` responde 200 con teléfono, DNI y dirección en `null`: no tener datos guardados es lo normal, no un error. Borrar deja el nombre, que es el de la cuenta.
 
 Los datos guardados se muestran **completos**, sin ocultar nada, porque los escribió el mismo cliente con su sesión. Es distinto de los datos de un pedido, que pudo hacer otra persona (ver la sección siguiente).
 
@@ -471,6 +472,7 @@ Los scripts de verificación cambian en los mismos Pull Requests que los rompen:
 | `V7` | 2 | `usuarios.password_hash` admite nulos; tabla `codigos_acceso` |
 | `V8` | 3 | Clientes sin contraseña y restricción `chk_usuarios_metodo_acceso` |
 | `V10` | 9 | `contacto_nombre`, `contacto_telefono` y `contacto_dni` en `pedidos`, más `envio_piso` y `envio_departamento` para Andreani (0006). Era la `V9`, que la tomó la tarea 10 al mergearse antes |
+| `V11` | 22 | `piso` y `departamento` en `direcciones`, y un índice único por cliente: una sola dirección guardada, garantizado por la base |
 
 Los números son una reserva: el definitivo se confirma al mergear, y nunca se mergea un número menor después de uno mayor.
 

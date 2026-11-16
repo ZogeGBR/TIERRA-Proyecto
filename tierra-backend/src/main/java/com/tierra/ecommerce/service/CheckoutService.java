@@ -32,7 +32,9 @@ import java.util.UUID;
 // | Del equipo | Cualquiera           | Como si no hubiera sesión                  |
 //
 // Y en ningún caso el checkout abre una sesión: escribir el email de otra
-// persona no da acceso a nada.
+// persona no da acceso a nada. La única vez que el checkout escribe en una
+// cuenta es con sesión de cliente y la casilla "guardar mis datos" tildada
+// (tarea 22): ahí el email está demostrado con el código.
 @Service
 public class CheckoutService {
 
@@ -41,13 +43,16 @@ public class CheckoutService {
     private final UsuarioRepository usuarioRepository;
     private final PedidoService pedidoService;
     private final PagoService pagoService;
+    private final DatosEntregaService datosEntregaService;
     private final TransactionTemplate transaccion;
 
     public CheckoutService(UsuarioRepository usuarioRepository, PedidoService pedidoService,
-                           PagoService pagoService, PlatformTransactionManager transactionManager) {
+                           PagoService pagoService, DatosEntregaService datosEntregaService,
+                           PlatformTransactionManager transactionManager) {
         this.usuarioRepository = usuarioRepository;
         this.pedidoService = pedidoService;
         this.pagoService = pagoService;
+        this.datosEntregaService = datosEntregaService;
         this.transaccion = new TransactionTemplate(transactionManager);
     }
 
@@ -60,8 +65,15 @@ public class CheckoutService {
     public CheckoutResponse comprar(CheckoutRequest request, UsuarioAutenticado sesion) {
         NuevoPedido datos = validarYArmar(request);
 
-        Pedido pedido = transaccion.execute(estado ->
-                pedidoService.crearPedido(resolverCliente(request, sesion), datos));
+        Pedido pedido = transaccion.execute(estado -> {
+            Usuario cliente = resolverCliente(request, sesion);
+            Pedido creado = pedidoService.crearPedido(cliente, datos);
+            // En la misma transacción: si el pedido no se crea, no se guarda nada.
+            if (guardaDatos(request, sesion)) {
+                datosEntregaService.guardar(cliente, datos);
+            }
+            return creado;
+        });
 
         PreferenciaPagoResponse preferencia;
         try {
@@ -84,6 +96,13 @@ public class CheckoutService {
             log.error("No se pudo cancelar el pedido {} después de fallar el link de pago; "
                     + "lo va a liberar el job de vencimientos", pedidoId, e);
         }
+    }
+
+    // Solo con sesión de cliente: es la única forma de saber que la cuenta es de
+    // quien compra. Sin sesión, la casilla se ignora aunque llegue tildada.
+    static boolean guardaDatos(CheckoutRequest request, UsuarioAutenticado sesion) {
+        return Boolean.TRUE.equals(request.guardarDatos())
+                && sesion != null && sesion.getRol() == RolUsuario.CLIENTE;
     }
 
     // Quién es el dueño del pedido. Corre dentro de la transacción del pedido.

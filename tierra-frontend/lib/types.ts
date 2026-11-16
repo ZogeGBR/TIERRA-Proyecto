@@ -113,6 +113,9 @@ export interface CheckoutRequest {
   dni?: string;
   tipoEntrega: TipoEntrega;
   direccion?: DireccionCheckoutRequest | null;
+  // "Guardar mis datos para la próxima compra" (tarea 22). Solo cuenta con
+  // sesión de cliente; sin sesión el backend la ignora.
+  guardarDatos?: boolean;
   items: ItemPedidoRequest[];
 }
 
@@ -171,6 +174,8 @@ export interface PedidoHistorial {
 
 // --- Datos guardados para la próxima compra (tarea 22) ---
 
+// GET /api/cuenta/datos-entrega (tarea 22). Sin datos guardados, telefono,
+// dni y direccion vienen en null; nombre es siempre el de la cuenta.
 export interface DatosEntregaGuardados {
   nombre: string;
   telefono: string | null;

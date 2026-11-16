@@ -18,7 +18,8 @@ Convenciones para todos los endpoints:
 | `POST /api/checkout` | 9 | ✅ |
 | `POST /api/envios/cotizacion` | 10 | ✅ |
 | `GET /api/pedidos/mios` | 19 | pendiente |
-| `GET /api/cuenta/datos-entrega` | 22 | pendiente |
+| `GET /api/cuenta/datos-entrega` | 22 | ✅ |
+| `DELETE /api/cuenta/datos-entrega` | 22 | ✅ |
 | `GET /api/productos/mas-vendidos` | — | pendiente |
 | `GET /api/alquiler/tipos` | 20 | pendiente |
 
@@ -149,6 +150,7 @@ La única forma de crear un pedido (decisión 0005). Se compra **sin cuenta y si
 | `tipoEntrega` | Sí | `ENVIO_DOMICILIO` o `RETIRO_LOCAL` |
 | `direccion` | Con envío | `calle`, `ciudad`, `provincia` y `codigoPostal` (4 números) obligatorios; `numero`, `piso` y `departamento` opcionales. Con retiro se ignora |
 | `items` | Sí | Entre 1 y 50 |
+| `guardarDatos` | No | `true` guarda los datos en la cuenta para la próxima compra (ver Cuenta). **Solo con sesión de cliente**: sin sesión o con la del equipo se ignora |
 
 El costo del envío lo calcula el backend con el mismo código que la cotización: el pedido cobra lo que dijo `POST /api/envios/cotizacion`. Los cupones no se aplican hasta la Fase 3.
 
@@ -162,7 +164,7 @@ El costo del envío lo calcula el backend con el mismo código que la cotizació
 | De cliente | Se ignora | El pedido va al cliente de la sesión |
 | Del equipo | Cualquiera | Como si no hubiera sesión |
 
-El teléfono, el DNI y la dirección quedan **en el pedido**, nunca en la cuenta: escribir el email de otra persona no cambia nada de ella ni da acceso a nada. La respuesta es la misma para un email nuevo y uno existente.
+El teléfono, el DNI y la dirección quedan **en el pedido**, nunca en la cuenta: escribir el email de otra persona no cambia nada de ella ni da acceso a nada. La única excepción es `guardarDatos` con sesión de cliente. La respuesta es la misma para un email nuevo y uno existente.
 
 Respuesta (201):
 
@@ -189,6 +191,35 @@ Errores:
 | 503 | — | El correo no pudo cotizar el envío (ver Envíos) |
 
 Ningún error deja un pedido pendiente ni stock reservado: los que ocurren antes de crear el pedido no crean nada, y el 503 del link cancela el pedido en el momento.
+
+---
+
+## Cuenta
+
+Datos guardados para la próxima compra (tarea 22, decisión 0005). Solo para clientes con sesión: sin sesión, 401; con la sesión del equipo, 403. **No hay endpoint para escribirlos**: se guardan únicamente desde el checkout, con sesión de cliente y `guardarDatos: true`, en la misma transacción que el pedido (si el pedido no se crea, no se guarda nada).
+
+### `GET /api/cuenta/datos-entrega` — cliente con sesión
+
+```json
+{
+  "nombre": "Ana Pérez",
+  "telefono": "2945 123456",
+  "dni": "30111222",
+  "direccion": {
+    "calle": "San Martín", "numero": "123", "piso": "2", "departamento": "B",
+    "ciudad": "Esquel", "provincia": "Chubut", "codigoPostal": "9200"
+  }
+}
+```
+
+- Completos, sin ocultar nada: los guardó el mismo cliente con su sesión.
+- **Sin datos guardados responde 200** con `telefono`, `dni` y `direccion` en `null`. `nombre` es siempre el de la cuenta.
+- Hay una sola dirección guardada por cliente: guardar otra la reemplaza.
+- Una compra con retiro en el local y la casilla tildada guarda nombre y teléfono, y conserva el DNI y la dirección que ya estaban.
+
+### `DELETE /api/cuenta/datos-entrega` — cliente con sesión (con token CSRF)
+
+Borra el teléfono, el DNI y la dirección guardada. Responde 204, también si no había nada. El nombre queda, porque es el de la cuenta. **No modifica ningún pedido**: cada pedido tiene su propia copia del contacto y la dirección.
 
 ---
 

@@ -42,7 +42,11 @@ public record CheckoutRequest(
         @NotEmpty(message = "El carrito está vacío")
         @Size(max = 50, message = "No se pueden comprar más de 50 productos distintos a la vez")
         @Valid
-        List<ItemPedidoRequest> items
+        List<ItemPedidoRequest> items,
+
+        // "Guardar mis datos para la próxima compra" (tarea 22). Solo cuenta
+        // con sesión de cliente; sin sesión o con la del equipo se ignora.
+        Boolean guardarDatos
 ) {
     public record DireccionCheckout(
             @Size(max = 200, message = "La calle no puede superar los 200 caracteres") String calle,

@@ -282,6 +282,9 @@ INSERT INTO usuarios (id, nombre, email, password_hash, telefono, dni, rol) VALU
    '$2b$12$F0uXbFOURXkd5.H6mDj03uoakevaiUT5hqu9gZUzlwwRfn9Se4eTy', '+54 9 2945 000002', NULL, 'ADMIN')
 ON CONFLICT (id) DO NOTHING;
 
+-- La dirección guardada de test@ (tarea 22). Sin columna en el ON CONFLICT:
+-- desde la V11 hay una sola por cliente, y si test@ ya guardó otra (con otro
+-- id) esta no se inserta, en vez de chocar con el índice único.
 INSERT INTO direcciones (id, usuario_id, calle, numero, ciudad, provincia, codigo_postal, es_predeterminada) VALUES
   ('88000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001', 'Av. Fontana', '482', 'Esquel', 'Chubut', '9200', true)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;

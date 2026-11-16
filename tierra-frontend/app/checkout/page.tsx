@@ -28,7 +28,7 @@ import {
   type DatosCheckout,
   type ErroresCheckout
 } from "@/lib/validacionCheckout";
-import type { DireccionCheckoutRequest, TipoEntrega } from "@/lib/types";
+import type { DatosEntregaGuardados, DireccionCheckoutRequest, TipoEntrega } from "@/lib/types";
 import { Campo } from "@/components/checkout/Campo";
 import { ResumenCompra } from "@/components/checkout/ResumenCompra";
 
@@ -73,6 +73,12 @@ export default function CheckoutPage() {
   const [paso, setPaso] = useState<Paso>(1);
   const [datos, setDatos] = useState<DatosCheckout>(DATOS_VACIOS);
   const [entrega, setEntrega] = useState<TipoEntrega>("ENVIO_DOMICILIO");
+  // "Guardar mis datos para la próxima compra" (tarea 22): solo con sesión de
+  // cliente y destildada por defecto (decisión 0005).
+  const [guardarDatos, setGuardarDatos] = useState(false);
+  const [datosGuardados, setDatosGuardados] = useState<DatosEntregaGuardados | null>(null);
+  const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
+  const [errorBorrado, setErrorBorrado] = useState("");
   const [mostrarErrores, setMostrarErrores] = useState(false);
   const [tocados, setTocados] = useState<ReadonlySet<string>>(new Set());
   const [errorServidor, setErrorServidor] = useState<{ campo: keyof DatosCheckout; texto: string } | null>(null);
@@ -87,7 +93,7 @@ export default function CheckoutPage() {
   const tituloPaso = useRef<HTMLHeadingElement>(null);
   const primeraVez = useRef(true);
 
-  // --- Datos de la sesión de cliente: nombre y email precargados -----------
+  // --- Datos de la sesión de cliente: precarga ------------------------------
   const idClienteCargado = useRef<string | null>(null);
   useEffect(() => {
     if (!cliente || !usuario) {
@@ -104,6 +110,39 @@ export default function CheckoutPage() {
       nombre: d.nombre || usuario.nombre,
       email: usuario.email
     }));
+
+    // Los datos guardados para la próxima compra (tarea 22). Sin datos
+    // guardados el backend responde 200 con teléfono, DNI y dirección en null:
+    // el formulario queda como está. Todo sigue siendo editable.
+    let cancelado = false;
+    api.cuenta
+      .datosEntrega()
+      .then((g) => {
+        if (cancelado || !(g.telefono || g.dni || g.direccion)) return;
+        setDatosGuardados(g);
+        setDatos((d) => ({
+          ...d,
+          // Lo guardado gana sobre el nombre de la cuenta; lo demás solo
+          // completa lo que la persona todavía no escribió.
+          nombre: g.nombre || d.nombre,
+          telefono: d.telefono || g.telefono || "",
+          dni: d.dni || g.dni || "",
+          calle: d.calle || g.direccion?.calle || "",
+          numero: d.numero || g.direccion?.numero || "",
+          piso: d.piso || g.direccion?.piso || "",
+          departamento: d.departamento || g.direccion?.departamento || "",
+          ciudad: d.ciudad || g.direccion?.ciudad || "",
+          provincia: d.provincia || g.direccion?.provincia || "",
+          codigoPostal: d.codigoPostal || g.direccion?.codigoPostal || ""
+        }));
+      })
+      .catch((e) => {
+        // No impide comprar: el formulario simplemente arranca sin precargar.
+        console.warn("No se pudieron leer los datos guardados:", e);
+      });
+    return () => {
+      cancelado = true;
+    };
   }, [cliente, usuario]);
 
   // --- Cobertura y costo de envío, mientras se completa la dirección -------
@@ -221,9 +260,28 @@ export default function CheckoutPage() {
     irAlPaso(3);
   }
 
+  // --- Datos guardados: borrar ---------------------------------------------
+  async function borrarDatosGuardados() {
+    setErrorBorrado("");
+    try {
+      await api.cuenta.borrarDatosEntrega();
+      setDatosGuardados(null);
+      setConfirmandoBorrado(false);
+      setGuardarDatos(false);
+      // El formulario queda vacío, menos nombre y email, que son de la cuenta.
+      setDatos({ ...DATOS_VACIOS, nombre: usuario?.nombre ?? "", email: usuario?.email ?? "" });
+      setTocados(new Set());
+    } catch (e) {
+      setErrorBorrado(textoDeError(e, "No pudimos borrar tus datos. Probá de nuevo."));
+    }
+  }
+
   async function salirDeLaCuenta() {
     await cerrarSesion();
     setDatos(DATOS_VACIOS);
+    setDatosGuardados(null);
+    setConfirmandoBorrado(false);
+    setGuardarDatos(false);
   }
 
   // --- Comprar ---------------------------------------------------------------
@@ -267,7 +325,13 @@ export default function CheckoutPage() {
             dni: esRetiro ? undefined : datos.dni.replace(/\D/g, ""),
             tipoEntrega: entrega,
             direccion,
-            items: itemsPedido
+            items: itemsPedido,
+            // Sin sesión de cliente no se manda: el backend igual la ignoraría.
+            // Va con el pedido: si se reabre un link de pago guardado, no se
+            // crea pedido y tampoco se guardan los datos. La casilla no entra
+            // en la firma a propósito: crear otro pedido dejaría el anterior
+            // reteniendo el stock (y con la última unidad, daría "sin stock").
+            guardarDatos: cliente && guardarDatos ? true : undefined
           });
           const pago = { pedidoId: res.pedidoId, initPoint: res.initPoint, venceEn: vencimientoDe(res.expiraEn) };
           guardarPagoPendiente({ ...pago, firma });
@@ -391,6 +455,34 @@ export default function CheckoutPage() {
                       Cerrá sesión
                     </button>
                   </p>
+                )}
+
+                {datosGuardados && (
+                  <div className="rounded-lg bg-tierra-verde/10 text-tierra-verde text-sm px-3 py-2 anim-aviso">
+                    <p>Completamos el formulario con tus datos guardados. Podés cambiarlos.</p>
+                    {!confirmandoBorrado ? (
+                      <button type="button" onClick={() => setConfirmandoBorrado(true)} className="mt-1 underline">
+                        Borrar mis datos guardados
+                      </button>
+                    ) : (
+                      <div className="mt-2 text-tierra-terracota-oscuro">
+                        <p>¿Borrar tus datos guardados? Tus pedidos no se tocan.</p>
+                        <div className="mt-2 flex gap-2">
+                          <button type="button" onClick={borrarDatosGuardados} className="btn-primario !py-1.5 !px-4 text-sm">
+                            Sí, borrar
+                          </button>
+                          <button type="button" onClick={() => setConfirmandoBorrado(false)} className="btn-secundario !py-1.5 !px-4 text-sm">
+                            Cancelar
+                          </button>
+                        </div>
+                        {errorBorrado && (
+                          <p role="alert" className="mt-1 text-sm text-red-600">
+                            {errorBorrado}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <Campo id="nombre" etiqueta="Nombre completo" name="name" autoComplete="name" {...propsCampo("nombre")} />
@@ -584,6 +676,18 @@ export default function CheckoutPage() {
                 <p className="text-sm text-tierra-terracota-oscuro/70">
                   El pago se completa en Mercado Pago: tarjetas de crédito/débito o dinero en cuenta. Tierra nunca ve ni guarda el número de tarjeta.
                 </p>
+
+                {cliente && (
+                  <label className="flex items-start gap-2 text-sm text-tierra-terracota-oscuro cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={guardarDatos}
+                      onChange={(e) => setGuardarDatos(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-tierra-verde"
+                    />
+                    <span>Guardar mis datos para la próxima compra</span>
+                  </label>
+                )}
 
                 {error && (
                   <div className="text-sm text-red-600 anim-aviso" role="alert">

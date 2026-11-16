@@ -90,7 +90,7 @@ public class InventarioService {
         }
     }
 
-    // Libera una reserva sin vender: el carrito se abandonó, el pago falló
+    // Libera una reserva sin vender: el pedido se abandonó, el pago falló
     // o venció el TTL. Solo baja stockReservado — el stock real nunca se
     // había tocado.
     @Transactional

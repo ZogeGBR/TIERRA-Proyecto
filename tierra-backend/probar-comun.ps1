@@ -96,8 +96,13 @@ function ReiniciarCliente($email) {
 # minutos: sin esto, dos corridas seguidas se quedan sin stock y los pedidos
 # dan 409. Solo toca pedidos de test@, mostrador@, admin@ y de los clientes
 # que crean los scripts del checkout (@prueba.tierra.esquel).
-function CancelarPedidosDePrueba {
-    Sql "WITH p AS (SELECT id FROM pedidos WHERE estado = 'PENDIENTE' AND usuario_id IN (SELECT id FROM usuarios WHERE email IN ('test@tierra.esquel', 'mostrador@tierra.esquel', 'admin@tierra.esquel') OR email LIKE '%@prueba.tierra.esquel')), r AS (UPDATE reservas_stock SET liberada = true WHERE liberada = false AND pedido_id IN (SELECT id FROM p) RETURNING variante_id, cantidad), v AS (UPDATE variantes_producto vp SET stock_reservado = GREATEST(0, vp.stock_reservado - t.total) FROM (SELECT variante_id, SUM(cantidad) AS total FROM r GROUP BY variante_id) t WHERE vp.id = t.variante_id AND vp.controla_stock RETURNING 1) UPDATE pedidos SET estado = 'CANCELADO' WHERE id IN (SELECT id FROM p);" | Out-Null
+#
+# $excepto (opcional): el id de un pedido que se deja pendiente a proposito,
+# para probarlo despues a mano (probar-mis-pedidos.ps1).
+function CancelarPedidosDePrueba($excepto) {
+    $salvo = ""
+    if ($excepto) { $salvo = " AND id <> '$excepto'" }
+    Sql "WITH p AS (SELECT id FROM pedidos WHERE estado = 'PENDIENTE'$salvo AND usuario_id IN (SELECT id FROM usuarios WHERE email IN ('test@tierra.esquel', 'mostrador@tierra.esquel', 'admin@tierra.esquel') OR email LIKE '%@prueba.tierra.esquel')), r AS (UPDATE reservas_stock SET liberada = true WHERE liberada = false AND pedido_id IN (SELECT id FROM p) RETURNING variante_id, cantidad), v AS (UPDATE variantes_producto vp SET stock_reservado = GREATEST(0, vp.stock_reservado - t.total) FROM (SELECT variante_id, SUM(cantidad) AS total FROM r GROUP BY variante_id) t WHERE vp.id = t.variante_id AND vp.controla_stock RETURNING 1) UPDATE pedidos SET estado = 'CANCELADO' WHERE id IN (SELECT id FROM p);" | Out-Null
 }
 
 function DesbloquearTodos {

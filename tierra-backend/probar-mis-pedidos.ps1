@@ -135,6 +135,13 @@ $muchos = Lista (Mios $s)
 Condicion ($muchos.Count -eq 50) "responde 50 de 58 ($($muchos.Count))"
 Condicion ($muchos[0].id -eq $d) "y el primero sigue siendo el mas nuevo"
 
+# Se limpia todo menos D, que queda pendiente para la prueba a mano en el
+# navegador (con "Pagar"). Despues lo cancela solo el job de vencimientos,
+# como a cualquier pedido abandonado. D no retiene stock sin Mercado Pago;
+# con un token valido, su reserva vence a los 20 minutos.
 ReiniciarCliente "test@tierra.esquel"
-CancelarPedidosDePrueba
+CancelarPedidosDePrueba $d
+Write-Host ""
+Write-Host "Para probar en el navegador, entra con: $email" -ForegroundColor Cyan
+Write-Host "(el pendiente con 'Pagar' se puede pagar unos 15 minutos; despues vence y el sistema lo cancela)"
 Resumen

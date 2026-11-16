@@ -92,8 +92,11 @@ Condicion ($da.calle -eq "San Martin" -and $da.numero -eq "123" -and $da.piso -e
 Condicion ($null -eq $pd.contactoDni -and $null -eq $pd.direccionEntrega -and $pd.tipoEntrega -eq "RETIRO_LOCAL") "con retiro, sin DNI ni direccion"
 
 Write-Host "`n5. Productos y montos" -ForegroundColor Cyan
-$nombres = ($pa.items | ForEach-Object { "$($_.nombreProducto)|$($_.talla)|$($_.color)|$($_.cantidad)" }) -join " ; "
-$esperado = Escalar "SELECT string_agg(nombre_producto || '|' || coalesce(talla, '') || '|' || coalesce(color, '') || '|' || cantidad, ' ; ' ORDER BY nombre_producto, talla, color, id) FROM pedido_items WHERE pedido_id = '$a';"
+# Los dos lados pasan a ASCII igual (cada caracter no ASCII se vuelve "?"):
+# en Windows PowerShell 5.1 la salida de psql llega con la codificacion de la
+# consola y la tilde de "Unico" no coincidiria con la de la respuesta.
+$nombres = (($pa.items | ForEach-Object { "$($_.nombreProducto)|$($_.talla)|$($_.color)|$($_.cantidad)" }) -join " ; ") -replace '[^ -~]', '?'
+$esperado = Escalar "SELECT regexp_replace(string_agg(nombre_producto || '|' || coalesce(talla, '') || '|' || coalesce(color, '') || '|' || cantidad, ' ; ' ORDER BY nombre_producto, talla, color, id), '[^ -~]', '?', 'g') FROM pedido_items WHERE pedido_id = '$a';"
 Condicion (@($pa.items).Count -eq 2 -and $nombres -eq $esperado) "dos productos con talle, color y cantidad ($nombres)"
 $totalBase = Escalar "SELECT total FROM pedidos WHERE id = '$a';"
 Condicion ([decimal]$pa.total -eq [decimal]$totalBase -and [decimal]$pa.costoEnvio -gt 0) "total $($pa.total) (envio $($pa.costoEnvio)), igual al de la base"

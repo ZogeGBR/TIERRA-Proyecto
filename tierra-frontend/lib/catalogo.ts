@@ -20,6 +20,14 @@ export const GENEROS: { valor: GeneroProducto; etiqueta: string }[] = [
 ];
 
 export const MAX_LARGO_BUSQUEDA = 80;
+// Los largos de las columnas talla y color en la base.
+const MAX_LARGO_TALLE = 20;
+const MAX_LARGO_COLOR = 50;
+
+function leerTexto(valor: string | undefined, largoMaximo: number): string | undefined {
+  const limpio = valor?.trim();
+  return limpio && limpio.length <= largoMaximo ? limpio : undefined;
+}
 export const PRECIO_MAXIMO = 100_000_000;
 
 const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,6 +75,8 @@ export function filtrosDeLaUrl(params: ParametrosDeUrl): FiltrosDeCatalogo {
     genero,
     precioMin,
     precioMax,
+    talle: leerTexto(primero(params.talle), MAX_LARGO_TALLE),
+    color: leerTexto(primero(params.color), MAX_LARGO_COLOR),
     orden,
     pagina
   };
@@ -84,6 +94,8 @@ export function queryDeFiltros(f: FiltrosDeCatalogo): string {
   if (f.genero) p.set("genero", f.genero);
   if (f.precioMin !== undefined) p.set("precioMin", String(f.precioMin));
   if (f.precioMax !== undefined) p.set("precioMax", String(f.precioMax));
+  if (f.talle) p.set("talle", f.talle);
+  if (f.color) p.set("color", f.color);
   if (f.orden !== ORDEN_POR_DEFECTO) p.set("orden", f.orden);
   if (f.pagina > 1) p.set("pagina", String(f.pagina));
   return p.toString();
@@ -103,7 +115,9 @@ export function cantidadDeFiltros(f: FiltrosDeCatalogo): number {
     f.categoriaId !== undefined,
     f.marcaId !== undefined,
     f.genero !== undefined,
-    f.precioMin !== undefined || f.precioMax !== undefined
+    f.precioMin !== undefined || f.precioMax !== undefined,
+    f.talle !== undefined,
+    f.color !== undefined
   ].filter(Boolean).length;
 }
 

@@ -11,6 +11,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -129,6 +130,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRutaNoEncontrada(Exception ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("La dirección solicitada no existe"));
+    }
+
+    // Un parámetro con formato inválido en la URL: un id que no es UUID
+    // (/api/productos/abc), un género que no existe (?genero=X), un precio
+    // que no es número. Sin esto caía en el handler genérico como 500.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTipoDeParametro(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("El parámetro '" + ex.getName() + "' no tiene un formato válido"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

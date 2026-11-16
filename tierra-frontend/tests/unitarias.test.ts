@@ -13,6 +13,7 @@ import { diasDeAlquiler, estimarPrecio, enlaceWhatsapp, armarMensajeConsulta } f
 import { etiquetaDeEstado, tonoDeEstado, sePuedePagar } from "../lib/pedidos";
 import { textoDeError, esEmailNoUsable, esErrorDeRed, esErrorDelServidor } from "../lib/errores";
 import { ApiError, api, NO_DISPONIBLE } from "../lib/api";
+import { filtrosDeLaUrl, queryDeFiltros, cantidadDeFiltros } from "../lib/catalogo";
 import { normalizarRanking, pestaniasConProductos, LIMITE_RANKING, MINIMO_RANKING } from "../lib/rankings";
 
 function almacenFalso() {
@@ -268,4 +269,19 @@ test("endpoints públicos que todavía no existen", async () => {
   } finally {
     globalThis.fetch = fetchOriginal;
   }
+});
+
+test("catálogo: talle y color viajan en la URL y cuentan como filtros", () => {
+  const f = filtrosDeLaUrl({ talle: " M ", color: "Azul", pagina: "2" });
+  assert.equal(f.talle, "M");
+  assert.equal(f.color, "Azul");
+  assert.equal(queryDeFiltros(f), "talle=M&color=Azul&pagina=2");
+  assert.equal(cantidadDeFiltros(f), 2);
+  // Vacíos o más largos que la columna de la base: se descartan.
+  const g = filtrosDeLaUrl({ talle: "   ", color: "x".repeat(51) });
+  assert.equal(g.talle, undefined);
+  assert.equal(g.color, undefined);
+  assert.equal(queryDeFiltros(g), "");
+  // Con tildes: URLSearchParams los codifica, el backend los compara sin tildes.
+  assert.equal(queryDeFiltros(filtrosDeLaUrl({ talle: "Único" })), "talle=%C3%9Anico");
 });

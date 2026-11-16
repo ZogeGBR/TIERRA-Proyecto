@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { ItemCarrito } from "@/lib/types";
+import { guardarCarrito, leerCarritoGuardado } from "@/lib/carritoGuardado";
 
 interface CartContextValue {
   items: ItemCarrito[];
@@ -10,24 +11,33 @@ interface CartContextValue {
   actualizarCantidad: (varianteId: string, cantidad: number) => void;
   vaciarCarrito: () => void;
   subtotal: number;
+  /** false hasta que se leyó el carrito guardado: antes de eso `items` está vacío sin ser cierto. */
+  listo: boolean;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
-const STORAGE_KEY = "tierra_carrito";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ItemCarrito[]>([]);
+  // Falso hasta que se leyó lo guardado. Sin esto, el primer render (carrito
+  // vacío) se escribía en localStorage ANTES de que el estado se cargara, y
+  // lo único que evitaba perder el carrito era el orden en que React corre
+  // los dos efectos -- correcto pero frágil.
+  const [hidratado, setHidratado] = useState(false);
 
-  // Persistencia simple en localStorage: alcanza para un carrito de invitado.
-  // Si más adelante hay login, conviene sincronizar esto con el usuario en el backend.
+  // Persistencia simple en localStorage: alcanza para un carrito de invitado
+  // (el checkout no exige cuenta, así que no hay a quién asignarle un carrito
+  // en el backend). La lectura y la escritura están en lib/carritoGuardado,
+  // que no lanza ante un valor corrupto o un almacenamiento bloqueado.
   useEffect(() => {
-    const guardado = window.localStorage.getItem(STORAGE_KEY);
-    if (guardado) setItems(JSON.parse(guardado));
+    setItems(leerCarritoGuardado());
+    setHidratado(true);
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    if (!hidratado) return;
+    guardarCarrito(items);
+  }, [items, hidratado]);
 
   function agregarItem(nuevo: ItemCarrito) {
     setItems((prev) => {
@@ -51,13 +61,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   function vaciarCarrito() {
+    // Se persiste YA, no solo se limpia el estado. React corre los efectos
+    // de los hijos antes que los del padre: una página que vacía el carrito al
+    // montarse (como /checkout/exito) lo hacía ANTES de que este provider
+    // terminara de leer localStorage, y esa lectura posterior devolvía el
+    // carrito viejo y pisaba el vaciado. Escribiendo el vacío primero, la
+    // lectura ya encuentra un carrito vacío, en cualquier orden.
+    guardarCarrito([]);
     setItems([]);
   }
 
   const subtotal = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
 
   return (
-    <CartContext.Provider value={{ items, agregarItem, quitarItem, actualizarCantidad, vaciarCarrito, subtotal }}>
+    <CartContext.Provider value={{ items, agregarItem, quitarItem, actualizarCantidad, vaciarCarrito, subtotal, listo: hidratado }}>
       {children}
     </CartContext.Provider>
   );

@@ -1,3 +1,5 @@
+import { BarraProgreso } from "@/components/BarraProgreso";
+import { LuzCursor } from "@/components/LuzCursor";
 import type { Metadata } from "next";
 import { Fraunces, Work_Sans } from "next/font/google";
 import "./globals.css";
@@ -5,6 +7,7 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { BotonWhatsApp } from "@/components/BotonWhatsApp";
 
 // Fraunces para títulos (serif con carácter, como el del boceto),
 // Work Sans para el resto del texto — más prolijo que la fuente por
@@ -34,9 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             sesión (vaciarse al cerrarla), no al revés. */}
         <AuthProvider>
           <CartProvider>
+            <BarraProgreso />
+            <LuzCursor />
             <Header />
             <main className="min-h-screen">{children}</main>
             <Footer />
+            <BotonWhatsApp />
           </CartProvider>
         </AuthProvider>
       </body>

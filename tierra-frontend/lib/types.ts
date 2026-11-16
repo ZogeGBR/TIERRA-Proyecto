@@ -3,6 +3,9 @@
 
 export interface ProductoResumen {
   id: string;
+  // Tarea 8 (V10): el backend lo va a sumar. Mientras no exista, las rutas
+  // usan el id (ver lib/rutas.ts).
+  slug?: string;
   nombre: string;
   marca: string;
   categoria: string;
@@ -21,6 +24,7 @@ export interface VarianteProducto {
 
 export interface ProductoDetalle {
   id: string;
+  slug?: string;
   nombre: string;
   descripcion: string | null;
   marca: string;
@@ -35,8 +39,8 @@ export interface ProductoDetalle {
 
 export type RolUsuario = "CLIENTE" | "ADMIN" | "OPERADOR";
 
-// Lo que devuelven /auth/codigo/verificar, /auth/equipo/login y /auth/yo:
-// siempre la misma forma, así el frontend tiene un solo tipo de usuario.
+// Lo que devuelven /auth/registro, /auth/login y /auth/yo: siempre la misma
+// forma, así el frontend tiene un solo tipo de usuario.
 export interface Usuario {
   id: string;
   nombre: string;
@@ -44,14 +48,26 @@ export interface Usuario {
   rol: RolUsuario;
 }
 
-// Login del equipo. Los clientes no tienen contraseña: entran con un código.
-export interface LoginRequest {
+// --- Acceso (ADR 0005: los clientes entran por código, el equipo con contraseña) ---
+
+export interface SolicitarCodigoRequest {
+  email: string;
+}
+
+export interface VerificarCodigoRequest {
+  email: string;
+  codigo: string;
+}
+
+export interface LoginEquipoRequest {
   email: string;
   password: string;
 }
 
-// Respuesta de los endpoints que sólo informan algo, como pedir un código.
-export interface MensajeResponse {
+// Respuesta de POST /auth/codigo: SIEMPRE el mismo texto, exista o no el
+// email (la regla de la sección 3.2 de la auditoría: responder distinto
+// permitiría averiguar qué emails son clientes).
+export interface MensajeGenerico {
   mensaje: string;
 }
 
@@ -62,27 +78,19 @@ export interface ItemPedidoRequest {
 
 export type TipoEntrega = "ENVIO_DOMICILIO" | "RETIRO_LOCAL";
 
-export interface DireccionEntrega {
-  calle: string;
-  numero?: string | null;
-  ciudad: string;
-  provincia: string;
-  codigoPostal: string;
-}
-
+// TEMPORAL, hasta la tarea 9: el checkout que sigue en uso crea el pedido con
+// POST /api/pedidos, que exige sesión. Con el checkout sin cuenta
+// (POST /api/checkout) estos dos tipos y api.pedidos.crear se borran.
 export interface CrearPedidoRequest {
   // Sin usuarioId: de quién es el pedido lo decide la sesión en el backend.
-  // Mandarlo desde acá no serviría de nada, el servidor lo ignora.
   tipoEntrega: TipoEntrega;
   direccionEnvioId?: string | null;
-  codigoCupon?: string;
   items: ItemPedidoRequest[];
 }
 
 export interface PedidoResponse {
   id: string;
   tipoEntrega: TipoEntrega;
-  direccionEntrega?: DireccionEntrega | null;
   estado: string;
   subtotal: number;
   descuento: number;
@@ -91,30 +99,103 @@ export interface PedidoResponse {
   creadoEn: string;
 }
 
-export interface EquipoDisponible {
-  id: string;
-  tipo: string;
-  marca: string | null;
-  modelo: string | null;
+export interface DireccionEntrega {
+  calle: string;
+  numero?: string | null;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+}
+
+// --- Checkout sin cuenta (auditoría Fase 2, sección 3.1) ---
+// Se compra sin sesión y sin contraseña. Los datos de contacto y la dirección
+// viajan EN el pedido (no en la cuenta): escribir el email de otra persona no
+// modifica nada de ella.
+
+export interface DireccionCheckoutRequest {
+  calle: string;
+  numero?: string;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+}
+
+export interface CheckoutRequest {
+  // Siempre obligatorios.
+  nombre: string;
+  email: string;
+  telefono: string;
+  // Solo con envío a domicilio.
+  dni?: string;
+  tipoEntrega: TipoEntrega;
+  direccion?: DireccionCheckoutRequest | null;
+  codigoCupon?: string;
+  // Solo se tiene en cuenta con sesión de cliente (tarea 22); sin sesión el
+  // backend lo ignora.
+  guardarDatos?: boolean;
+  items: ItemPedidoRequest[];
+}
+
+// La respuesta es la misma sea el cliente nuevo o existente: si difiriera, el
+// checkout serviría para averiguar quién compró en Tierra.
+export interface CheckoutResponse {
+  pedidoId: string;
+  total: number;
+  initPoint: string; // link de pago de Mercado Pago
+  expiraEn: string; // ISO: cuándo vence el link
+}
+
+// --- Cotización de envío (tarea 10) ---
+
+export interface CotizacionEnvioRequest {
+  tipoEntrega: TipoEntrega;
+  provincia?: string;
+  codigoPostal?: string;
+  items: ItemPedidoRequest[];
+}
+
+export interface CotizacionEnvioResponse {
+  // false = fuera de la zona de cobertura: solo se ofrece retiro en el local.
+  cubierto: boolean;
+  costo: number | null;
+  mensaje: string | null;
+}
+
+// --- Historial de pedidos (tarea 19) ---
+// El DNI y el teléfono llegan YA ocultos desde el backend ("***.***.123",
+// "••• 4567"): el dato completo nunca viaja al navegador.
+
+export interface ItemHistorial {
+  nombreProducto: string;
   talla: string | null;
-  precioDia: number;
-  depositoGarantia: number;
+  color: string | null;
+  cantidad: number;
+  precioUnitario: number;
 }
 
-export interface CrearReservaRequest {
-  usuarioId: string;
-  fechaInicio: string; // formato ISO yyyy-MM-dd
-  fechaFin: string;
-  equipos: { equipoId: string }[];
-}
-
-export interface ReservaResponse {
+export interface PedidoHistorial {
   id: string;
   estado: string;
-  fechaInicio: string;
-  fechaFin: string;
-  precioTotal: number;
-  depositoTotal: number;
+  creadoEn: string;
+  tipoEntrega: TipoEntrega;
+  direccionEntrega: DireccionEntrega | null;
+  contactoNombre: string;
+  contactoTelefono: string | null; // oculto
+  contactoDni: string | null; // oculto
+  subtotal: number;
+  descuento: number;
+  costoEnvio: number;
+  total: number;
+  items: ItemHistorial[];
+}
+
+// --- Datos guardados para la próxima compra (tarea 22) ---
+
+export interface DatosEntregaGuardados {
+  nombre: string;
+  telefono: string | null;
+  dni: string | null;
+  direccion: DireccionEntrega | null;
 }
 
 export interface PreferenciaPago {
@@ -133,4 +214,54 @@ export interface ItemCarrito {
   precioUnitario: number;
   cantidad: number;
   imagen: string | null;
+}
+
+// --- Catálogo: búsqueda, filtros y paginación ---
+//
+// Estos tipos son el CONTRATO que el backend tiene que cumplir para GET
+// /api/productos (tarea 6 de la Fase 2). Hoy el backend no lo cumple: devuelve
+// una lista vacía si no se le pasa categoriaId o marcaId, y no sabe de texto,
+// precio, género, orden ni páginas. La implementación de referencia
+// (ejecutable) está en lib/catalogoDePrueba.ts; el contrato definitivo se
+// documenta en docs/contratos-fase2.md con la tarea 6.
+
+// Mismos valores que el enum GeneroProducto del backend.
+export type GeneroProducto = "HOMBRE" | "MUJER" | "UNISEX" | "NINO";
+
+export type OrdenCatalogo = "nombre" | "precio_asc" | "precio_desc";
+
+export interface FiltrosDeCatalogo {
+  q?: string; // texto libre
+  categoriaId?: string; // incluye las categorías hijas
+  marcaId?: string;
+  genero?: GeneroProducto;
+  precioMin?: number; // inclusive, en pesos
+  precioMax?: number; // inclusive, en pesos
+  orden: OrdenCatalogo;
+  pagina: number; // desde 1
+}
+
+// Respuesta paginada. Nombres en español y página desde 1, a propósito: si el
+// backend devuelve el Page crudo de Spring (content, number desde 0,
+// totalElements...), la traducción va en un solo lugar: api.productos.listar.
+export interface Pagina<T> {
+  contenido: T[];
+  pagina: number;
+  tamanio: number;
+  totalElementos: number;
+  totalPaginas: number; // 0 si no hay resultados
+}
+
+// Para armar los filtros: GET /api/categorias y GET /api/marcas.
+// Lo que devuelve GET /api/categorias (CategoriaDTO del backend, tarea 7).
+export interface OpcionCategoria {
+  id: string;
+  nombre: string;
+  slug: string;
+  categoriaPadreId: string | null;
+}
+
+export interface OpcionMarca {
+  id: string;
+  nombre: string;
 }

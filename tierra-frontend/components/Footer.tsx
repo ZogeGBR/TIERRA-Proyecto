@@ -1,12 +1,13 @@
-import { Instagram, Facebook, MessageCircle, MapPin, Clock, Phone, Mail, Bike, Tent, Shirt, Snowflake } from "lucide-react";
+import { MAIL, URL_INSTAGRAM, URL_MAIL, WHATSAPP_VISIBLE, urlWhatsapp } from "@/lib/contacto";
+import { Instagram, MessageCircle, MapPin, Clock, Phone, Mail, Bike, Tent, Shirt, Snowflake } from "lucide-react";
 
 export function Footer() {
   return (
     <footer className="mt-16">
       {/* Cuerpo del footer: fondo claro, texto bordó — distinto de la franja
           de copyright de abajo, que sí es bordó sólida con texto blanco. */}
-      <div className="bg-tierra-crema text-tierra-terracota-oscuro text-sm">
-        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="relative overflow-hidden bg-tierra-crema text-tierra-terracota-oscuro text-sm">
+        <div className="relative max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +41,7 @@ export function Footer() {
             </ul>
           </div>
 
-          <div>
+          <div id="contacto" className="scroll-mt-32">
             <p className="font-bold mb-2 uppercase text-xs tracking-wide">Contacto</p>
             <ul className="space-y-1.5 text-tierra-terracota-oscuro/90">
               <li className="flex items-center gap-2">
@@ -50,10 +51,12 @@ export function Footer() {
                 <Clock size={14} className="shrink-0" /> De lunes a lunes de 9 a 13 hs
               </li>
               <li className="flex items-center gap-2">
-                <Phone size={14} className="shrink-0" /> +54 9 2945 123456
+                <Phone size={14} className="shrink-0" />
+                <a href={urlWhatsapp()} target="_blank" rel="noopener noreferrer" className="hover:underline">WhatsApp {WHATSAPP_VISIBLE}</a>
               </li>
               <li className="flex items-center gap-2">
-                <Mail size={14} className="shrink-0" /> hola@tierra.esquel
+                <Mail size={14} className="shrink-0" />
+                <a href={URL_MAIL} className="hover:underline break-all">{MAIL}</a>
               </li>
             </ul>
           </div>
@@ -61,14 +64,14 @@ export function Footer() {
           <div>
             <p className="font-bold mb-2 uppercase text-xs tracking-wide">Seguinos</p>
             <div className="flex gap-3">
-              <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-pink-500 text-white flex items-center justify-center hover:opacity-90">
+              <a href={URL_INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="Instagram de Tierra (@tierra.esquel)" className="w-9 h-9 rounded-full bg-pink-500 text-white flex items-center justify-center transition-transform hover:scale-110">
                 <Instagram size={16} />
               </a>
-              <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center hover:opacity-90">
-                <Facebook size={16} />
-              </a>
-              <a href="#" aria-label="WhatsApp" className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center hover:opacity-90">
+              <a href={urlWhatsapp()} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp de Tierra" className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center transition-transform hover:scale-110">
                 <MessageCircle size={16} />
+              </a>
+              <a href={URL_MAIL} aria-label="Escribinos por mail" className="w-9 h-9 rounded-full bg-tierra-terracota text-white flex items-center justify-center transition-transform hover:scale-110">
+                <Mail size={16} />
               </a>
             </div>
           </div>
@@ -76,7 +79,7 @@ export function Footer() {
       </div>
 
       <div className="bg-tierra-terracota text-white text-center py-4 text-xs">
-        © {new Date().getFullYear()} TIERRA Esquel. Todos los derechos reservados.
+        © <span suppressHydrationWarning>{new Date().getFullYear()}</span> TIERRA Esquel. Todos los derechos reservados.
       </div>
     </footer>
   );

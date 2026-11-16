@@ -1,15 +1,44 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { KeyRound } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { api } from "@/lib/api";
+import { textoDeError } from "@/lib/errores";
 
 type Paso = 1 | 2 | 3;
 
 const COSTO_ENVIO_REFERENCIAL = 12000; // el total real lo calcula el backend; esto es solo para mostrar en pantalla
 
+// TEMPORAL, hasta la tarea 9. Este checkout crea el pedido con
+// POST /api/pedidos, que exige sesión. El checkout sin cuenta del diseño
+// nuevo (POST /api/checkout, ADR 0005) entra en la etapa 2 de la integración
+// del frontend, junto con las tareas 9, 10 y 22. Mientras tanto, sin sesión
+// se invita a entrar con el código en vez de dejar que la compra falle al
+// final con un error confuso.
+function EntrarParaComprar() {
+  return (
+    <div className="max-w-xl mx-auto px-6 py-16 text-center">
+      <KeyRound className="mx-auto text-tierra-terracota" size={36} aria-hidden="true" />
+      <h1 className="mt-4 font-serif text-2xl md:text-3xl font-semibold text-tierra-terracota-oscuro">
+        Entrá para terminar tu compra
+      </h1>
+      <p className="mt-3 text-tierra-terracota-oscuro/80">
+        Por ahora, para comprar entrá con tu código: te lo mandamos a tu email, sin contraseña. Tu carrito
+        queda guardado.
+      </p>
+      <Link href="/login?redirect=/checkout" className="btn-primario mt-6 inline-flex">
+        Entrar con mi email
+      </Link>
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
+  const { usuario, cargando: cargandoSesion } = useAuth();
   const { items, subtotal, vaciarCarrito } = useCart();
   const router = useRouter();
   const [paso, setPaso] = useState<Paso>(1);
@@ -46,11 +75,13 @@ export default function CheckoutPage() {
       vaciarCarrito();
       window.location.href = preferencia.initPoint; // redirige a Mercado Pago
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo completar la compra.");
+      setError(textoDeError(e, "No se pudo completar la compra."));
     } finally {
       setCargando(false);
     }
   }
+
+  if (!cargandoSesion && !usuario) return <EntrarParaComprar />;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">

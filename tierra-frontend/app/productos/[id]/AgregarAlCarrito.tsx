@@ -76,7 +76,7 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
         </button>
       </div>
 
-      {mensaje && <p className="mt-2 text-sm text-tierra-terracota-oscuro">{mensaje}</p>}
+      {mensaje && <p key={mensaje} role="status" className="anim-aviso mt-2 text-sm text-tierra-terracota-oscuro">{mensaje}</p>}
 
       <button
         onClick={() => router.push("/carrito")}

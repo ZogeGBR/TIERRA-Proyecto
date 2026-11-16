@@ -1,48 +1,106 @@
+import { LIMITE_RANKING, normalizarRanking, type TipoRanking } from "./rankings";
 import type {
   ProductoResumen,
   ProductoDetalle,
+  CheckoutRequest,
+  CheckoutResponse,
+  CotizacionEnvioRequest,
+  CotizacionEnvioResponse,
+  PedidoHistorial,
   CrearPedidoRequest,
   PedidoResponse,
-  EquipoDisponible,
-  CrearReservaRequest,
-  ReservaResponse,
+  DatosEntregaGuardados,
   PreferenciaPago,
   Usuario,
-  LoginRequest,
-  MensajeResponse
+  SolicitarCodigoRequest,
+  VerificarCodigoRequest,
+  LoginEquipoRequest,
+  MensajeGenerico,
+  FiltrosDeCatalogo,
+  Pagina,
+  OpcionCategoria,
+  OpcionMarca
 } from "./types";
+import type { TipoAlquiler } from "./alquiler";
+import { TAMANIO_PAGINA, queryDeFiltros } from "./catalogo";
 
-// Error de una llamada a la API, con el código HTTP además del mensaje.
+// Error de la API con el código HTTP a mano.
 //
-// El código es lo que permite reaccionar distinto según el caso (un 409 de
-// stock no se maneja igual que un 503 de Mercado Pago) sin comparar el texto
-// del mensaje, que se rompe en silencio el día que alguien lo reescribe en el
-// backend. El mensaje sigue siendo el que se muestra: viene redactado para el
-// usuario final.
+// Hereda de Error y deja el texto en `message` a propósito: todo el código
+// que ya hacía `e instanceof Error ? e.message : "..."` sigue funcionando sin
+// tocarlo. Lo nuevo es `status`, para que cada pantalla pueda reaccionar al
+// tipo de falla (404 -> "no existe", 409 -> "conflicto", 0 -> "sin conexión")
+// en vez de mostrar el mismo texto para todo.
 //
-// estado = 0 significa que no hubo respuesta: el backend no está levantado o
-// no hay conexión.
+// status 0 significa que la petición ni siquiera llegó al backend (red caída,
+// backend apagado) -- no hay respuesta HTTP que tenga código.
+//
+// `codigo` es opcional: hoy el backend no lo manda en los errores, pero se
+// lee si aparece (por ejemplo "EMAIL_DEL_EQUIPO", "SIN_STOCK") para no tener
+// que adivinar el motivo de un 409 mirando el texto. El contrato con el
+// backend se documenta en docs/contratos-fase2.md, con cada tarea del backend.
 export class ApiError extends Error {
-  readonly estado: number;
+  readonly status: number;
+  readonly mensaje: string;
+  readonly codigo: string | null;
 
-  constructor(mensaje: string, estado: number) {
+  constructor(status: number, mensaje: string, codigo: string | null = null) {
     super(mensaje);
     this.name = "ApiError";
-    this.estado = estado;
-    // Para que `instanceof ApiError` funcione aunque el código se compile a
-    // una versión de JavaScript sin clases nativas.
+    this.status = status;
+    this.mensaje = mensaje;
+    this.codigo = codigo;
+    // Necesario cuando se hereda de Error y el código se compila hacia
+    // targets viejos: sin esto `instanceof ApiError` puede dar false.
     Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
 
-export const MENSAJE_SIN_CONEXION =
-  "No pudimos conectarnos con Tierra. Revisá tu conexión y probá de nuevo.";
+// ¿El catálogo se arma con datos de prueba (lib/catalogoDePrueba.ts) en vez de
+// pedírselo al backend?
+//
+// Existe porque el buscador y los filtros se construyeron ANTES de que el
+// backend implemente el contrato (tarea 6). Sirve para trabajar en esas
+// pantallas sin backend; cuando está activo, el catálogo muestra un aviso
+// para que nadie lo confunda con datos reales.
+//
+// APAGADO salvo NEXT_PUBLIC_CATALOGO_DE_PRUEBA=1, también en desarrollo: con
+// un .env.local sin esa línea (por ejemplo, uno copiado antes de que
+// existiera) el sitio tiene que mostrar el catálogo real, no productos
+// inventados. Next lo resuelve al compilar, no en cada pedido.
+export const USAR_CATALOGO_DE_PRUEBA = process.env.NEXT_PUBLIC_CATALOGO_DE_PRUEBA === "1";
 
-// El texto para mostrarle a la persona cuando algo falla. Los mensajes del
-// backend ya vienen redactados para el usuario final; cualquier otra cosa
-// (un error de programación, por ejemplo) se reemplaza por el texto dado.
-export function mensajeDeError(error: unknown, porDefecto: string): string {
-  return error instanceof ApiError ? error.message : porDefecto;
+// El backend actual responde [] a GET /productos sin categoriaId ni marcaId.
+// Sin esta comprobación, esa respuesta (válida pero de otro formato) rompería
+// la pantalla con un error de JavaScript en vez de explicar qué pasa.
+function esPagina(x: unknown): x is Pagina<ProductoResumen> {
+  if (typeof x !== "object" || x === null) return false;
+  const p = x as Record<string, unknown>;
+  return (
+    Array.isArray(p.contenido) &&
+    typeof p.pagina === "number" &&
+    typeof p.totalElementos === "number" &&
+    typeof p.totalPaginas === "number"
+  );
+}
+
+// develop (Fase 1) responde una LISTA simple a GET /productos con filtro de
+// categoría o marca, no la página {contenido,...} del contrato de Fase 2. Se
+// acepta y se envuelve como una única página, para que el catálogo ande con
+// cualquiera de los dos formatos.
+function comoPagina(x: unknown): Pagina<ProductoResumen> | null {
+  if (esPagina(x)) return x;
+  if (Array.isArray(x)) {
+    return { contenido: x as ProductoResumen[], pagina: 1, tamanio: x.length, totalElementos: x.length, totalPaginas: 1 };
+  }
+  return null;
+}
+
+// Estado que usamos para "el backend todavía no tiene este endpoint".
+export const NO_DISPONIBLE = 501;
+
+function errorDeFormato(que: string): ApiError {
+  return new ApiError(502, `La respuesta del servidor (${que}) no tiene el formato esperado. El backend todavía puede no soportar esta consulta.`);
 }
 
 function getApiUrl(): string {
@@ -94,7 +152,22 @@ async function asegurarTokenCsrf(): Promise<string | null> {
   return leerTokenCsrf();
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+// `publico: true` marca un endpoint que NO debería pedir sesión. Mientras el
+// backend no lo implementa, una ruta que todavía no existe puede responder:
+//   - 401 "Necesitás iniciar sesión", si cae en el `anyRequest().denyAll()`
+//     de SecurityConfig (por ejemplo /api/checkout);
+//   - 404 "La dirección solicitada no existe", si cae bajo una regla pública
+//     (por ejemplo /api/alquiler/tipos, que entra en /api/alquiler/**).
+// Sin esta marca la persona vería "tu sesión venció" o "la dirección no
+// existe", cuando en realidad falta implementar el endpoint. El 404 se
+// traduce sólo en los GET: en un POST público (checkout, cotización) un 404
+// puede ser un error real de negocio y su mensaje tiene que llegar.
+async function apiFetch<T>(path: string, options?: RequestInit & { publico?: boolean }): Promise<T> {
+  const publico = options?.publico === true;
+  if (options) {
+    options = { ...options };
+    delete (options as { publico?: boolean }).publico;
+  }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options?.headers as Record<string, string> | undefined)
@@ -123,14 +196,23 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       headers
     });
   } catch {
-    // fetch sólo falla así cuando no hubo respuesta. Su mensaje propio
-    // ("Failed to fetch") no le dice nada a quien está comprando.
-    throw new ApiError(MENSAJE_SIN_CONEXION, 0);
+    // fetch solo rechaza cuando no hubo respuesta (red caída, backend
+    // apagado, CORS). Sin esto el usuario veía "Failed to fetch", que no
+    // le dice nada.
+    throw new ApiError(0, "No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.");
   }
 
   if (!res.ok) {
+    const rutaFaltante = res.status === 401 || res.status === 403 || (res.status === 404 && esMetodoSeguro(options?.method));
+    if (publico && rutaFaltante) {
+      throw new ApiError(NO_DISPONIBLE, "Esta función todavía no está disponible. Probá de nuevo más tarde.");
+    }
     const cuerpo = await res.json().catch(() => null);
-    throw new ApiError(cuerpo?.mensaje ?? `Error ${res.status} al llamar a ${path}`, res.status);
+    throw new ApiError(
+      res.status,
+      cuerpo?.mensaje ?? `Error ${res.status} al llamar a ${path}`,
+      typeof cuerpo?.codigo === "string" ? cuerpo.codigo : null
+    );
   }
 
   // 201/204 sin body
@@ -140,24 +222,20 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   auth: {
-    // Clientes (ADR 0005). La respuesta es SIEMPRE el mismo mensaje genérico,
-    // exista el email o no: el frontend lo muestra tal cual y no intenta
-    // adivinar nada. Sólo un email con formato inválido da error (400).
-    solicitarCodigo: (email: string) =>
-      apiFetch<MensajeResponse>("/auth/codigo", { method: "POST", body: JSON.stringify({ email }) }),
-    // 401 con un mensaje genérico si el código no sirve, por el motivo que sea.
-    verificarCodigo: (email: string, codigo: string) =>
-      apiFetch<Usuario>("/auth/codigo/verificar", {
-        method: "POST",
-        body: JSON.stringify({ email, codigo })
-      }),
-    // Equipo: email y contraseña. 401 si no coinciden, 423 si la cuenta quedó
-    // bloqueada por intentos fallidos.
-    loginEquipo: (request: LoginRequest) =>
+    // Siempre responde 200 con el mismo texto (exista o no el email). Ver
+    // lib/errores.ts: el frontend tampoco intenta "adivinar" por el error.
+    solicitarCodigo: (request: SolicitarCodigoRequest) =>
+      apiFetch<MensajeGenerico>("/auth/codigo", { method: "POST", body: JSON.stringify(request) }),
+    // 200 con el usuario (y la sesión abierta) o 401 genérico.
+    verificarCodigo: (request: VerificarCodigoRequest) =>
+      apiFetch<Usuario>("/auth/codigo/verificar", { method: "POST", body: JSON.stringify(request) }),
+    // Login con contraseña, solo para el equipo (/equipo).
+    loginEquipo: (request: LoginEquipoRequest) =>
       apiFetch<Usuario>("/auth/equipo/login", { method: "POST", body: JSON.stringify(request) }),
     // Responde 204 sin cuerpo, por eso el tipo es void.
     logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
-    // Devuelve 401 si no hay sesión: un ApiError con estado 401.
+    // Devuelve 401 si no hay sesión, y apiFetch lo convierte en un ApiError.
+    // Quien lo llame tiene que distinguir "no hay sesión" (401) de "falló la red" (0).
     yo: () => apiFetch<Usuario>("/auth/yo")
   },
   productos: {
@@ -165,21 +243,117 @@ export const api = {
       apiFetch<ProductoResumen[]>(`/productos?categoriaId=${categoriaId}`),
     listarPorMarca: (marcaId: string) =>
       apiFetch<ProductoResumen[]>(`/productos?marcaId=${marcaId}`),
-    detalle: (id: string) => apiFetch<ProductoDetalle>(`/productos/${id}`)
+    // Búsqueda y filtros combinables, con paginación (tarea 6; el contrato se
+    // documenta en docs/contratos-fase2.md).
+    listar: async (filtros: FiltrosDeCatalogo): Promise<Pagina<ProductoResumen>> => {
+      if (USAR_CATALOGO_DE_PRUEBA) {
+        // Import dinámico: los datos de prueba quedan en un archivo aparte que
+        // el navegador solo descarga si este camino se ejecuta. Con el
+        // interruptor apagado (producción) el archivo se genera igual, pero
+        // nadie lo pide nunca -- ver la prueba R7 en el E2E del catálogo.
+        const { consultarCatalogo } = await import("./catalogoDePrueba");
+        return consultarCatalogo(filtros, TAMANIO_PAGINA);
+      }
+      const query = queryDeFiltros(filtros);
+      const respuesta = await apiFetch<unknown>(`/productos?${query ? query + "&" : ""}tamanio=${TAMANIO_PAGINA}`);
+      const pagina = comoPagina(respuesta);
+      if (!pagina) throw errorDeFormato("catálogo");
+      return pagina;
+    },
+    // Ranking "más vendidos" de la home (ver lib/rankings.ts). Nunca lanza:
+    // si el endpoint no existe o falla, devuelve [] y la home oculta la
+    // sección en vez de mostrar un orden inventado.
+    ranking: async (tipo: TipoRanking): Promise<ProductoResumen[]> => {
+      try {
+        if (USAR_CATALOGO_DE_PRUEBA) {
+          // Solo desarrollo sin backend: no hay ventas reales, se simula.
+          const { consultarCatalogo } = await import("./catalogoDePrueba");
+          const base = consultarCatalogo({ orden: "precio_desc", pagina: 1 }, LIMITE_RANKING);
+          return normalizarRanking(base.contenido);
+        }
+        const ruta = { vendidos: "mas-vendidos" }[tipo];
+        return normalizarRanking(await apiFetch<unknown>(`/productos/${ruta}?limite=${LIMITE_RANKING}`, { publico: true }));
+      } catch {
+        return [];
+      }
+    },
+    detalle: async (id: string): Promise<ProductoDetalle> => {
+      if (USAR_CATALOGO_DE_PRUEBA) {
+        // Solo los productos INVENTADOS tienen detalle de prueba; los reales
+        // del seed salen del backend.
+        const { detalleDePrueba } = await import("./catalogoDePrueba");
+        const inventado = detalleDePrueba(id);
+        if (inventado) return inventado;
+      }
+      return apiFetch<ProductoDetalle>(`/productos/${id}`);
+    }
   },
+  categorias: {
+    listar: async (): Promise<OpcionCategoria[]> => {
+      if (USAR_CATALOGO_DE_PRUEBA) return (await import("./catalogoDePrueba")).CATEGORIAS_PRUEBA;
+      try {
+        const respuesta = await apiFetch<unknown>("/categorias", { publico: true });
+        if (!Array.isArray(respuesta)) throw errorDeFormato("categorías");
+        return respuesta as OpcionCategoria[];
+      } catch (e) {
+        // develop no tiene GET /categorias: sin la lista, el catálogo
+        // funciona igual pero sin el filtro por categoría.
+        if (e instanceof ApiError && (e.status === NO_DISPONIBLE || e.status === 404)) return [];
+        throw e;
+      }
+    }
+  },
+  marcas: {
+    listar: async (): Promise<OpcionMarca[]> => {
+      if (USAR_CATALOGO_DE_PRUEBA) return (await import("./catalogoDePrueba")).MARCAS_PRUEBA;
+      try {
+        const respuesta = await apiFetch<unknown>("/marcas", { publico: true });
+        if (!Array.isArray(respuesta)) throw errorDeFormato("marcas");
+        return respuesta as OpcionMarca[];
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === NO_DISPONIBLE || e.status === 404)) return [];
+        throw e;
+      }
+    }
+  },
+  // POST /checkout es la única puerta para crear pedidos y NO abre sesión
+  // (auditoría Fase 2, sección 3.1). Devuelve el link de pago.
+  checkout: {
+    confirmar: (request: CheckoutRequest) =>
+      apiFetch<CheckoutResponse>("/checkout", { method: "POST", body: JSON.stringify(request), publico: true })
+  },
+  // Costo de envío y cobertura, ANTES de pagar (tarea 10). Informa: el que
+  // cobra es el checkout, que vuelve a calcularlo.
+  envios: {
+    cotizar: (request: CotizacionEnvioRequest) =>
+      apiFetch<CotizacionEnvioResponse>("/envios/cotizacion", { method: "POST", body: JSON.stringify(request), publico: true })
+  },
+  // Historial: solo del cliente de la sesión (el backend filtra por la
+  // sesión, nunca por un id que mande el frontend).
   pedidos: {
+    mios: () => apiFetch<PedidoHistorial[]>("/pedidos/mios"),
+    // TEMPORAL, hasta la tarea 9 (ver CrearPedidoRequest en lib/types.ts).
+    // Exige sesión: sin ella el backend responde 401.
     crear: (request: CrearPedidoRequest) =>
       apiFetch<PedidoResponse>("/pedidos", { method: "POST", body: JSON.stringify(request) })
   },
+  // Datos guardados para la próxima compra (tarea 22). No hay endpoint para
+  // ESCRIBIR: la única forma de guardar es el checkout con la casilla
+  // tildada.
+  cuenta: {
+    datosEntrega: () => apiFetch<DatosEntregaGuardados>("/cuenta/datos-entrega"),
+    borrarDatosEntrega: () => apiFetch<void>("/cuenta/datos-entrega", { method: "DELETE" })
+  },
+  // Solo la lista de tipos de equipo con su precio por día, para el
+  // estimador. SIN disponibilidad ni reservas (decisión 0001): el sistema no
+  // la conoce ni la promete, y api.alquiler.reservar se eliminó.
   alquiler: {
-    disponibilidad: (tipoId: string, fechaInicio: string, fechaFin: string) =>
-      apiFetch<EquipoDisponible[]>(
-        `/alquiler/disponibilidad?tipoId=${tipoId}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`
-      ),
-    reservar: (request: CrearReservaRequest) =>
-      apiFetch<ReservaResponse>("/alquiler/reservas", { method: "POST", body: JSON.stringify(request) })
+    tipos: () => apiFetch<TipoAlquiler[]>("/alquiler/tipos", { publico: true })
   },
   pagos: {
+    // Para "Pagar" en el historial (pedido pendiente) y la página de pago
+    // fallido: pide un link NUEVO. El checkout ya no lo usa: recibe el link
+    // en la respuesta de POST /checkout.
     crearPreferencia: (pedidoId: string) =>
       apiFetch<PreferenciaPago>(`/pagos/pedidos/${pedidoId}/preferencia`, { method: "POST" })
   }

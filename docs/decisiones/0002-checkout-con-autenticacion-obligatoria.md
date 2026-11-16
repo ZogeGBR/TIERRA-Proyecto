@@ -1,6 +1,6 @@
 # 0002 — Checkout con autenticación obligatoria: eliminación de compra como invitado
 
-- **Estado:** propuesta (requiere confirmación formal del cliente por impacto en presupuesto)
+- **Estado:** reemplazada por [0005](0005-acceso-por-codigo-y-compra-sin-cuenta.md). En la segunda entrevista Tierra pidió lo contrario: que se pueda comprar sin registrarse. Este documento se conserva como registro de lo que se había decidido y por qué; **no describe el sistema actual**.
 - **Fecha:** Fase 1 / Días 3-6 (Backend B)
 - **Ubicación en el repo:** `docs/decisiones/0002-checkout-con-autenticacion-obligatoria.md`
 

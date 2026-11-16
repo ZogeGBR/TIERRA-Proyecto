@@ -2,6 +2,10 @@
 
 Documento para el resto del equipo. Explica qué se hizo en las tareas 1 a 3, qué cambió respecto de lo que estaba, y cómo poner el proyecto a andar desde cero.
 
+> ⚠️ **Documento histórico: describe el proyecto al cierre de la Fase 1.** En la Fase 2 cambió el acceso de los clientes (decisión [0005](decisiones/0005-acceso-por-codigo-y-compra-sin-cuenta.md)): **el registro y el login de clientes con contraseña ya no existen**. Los clientes entran con un código de seis dígitos que piden por email, y la contraseña quedó sólo para el equipo, en `/equipo`. Lo que dice abajo sobre registro, `tierra2026` para `test@` y las pantallas de login y registro ya no vale.
+>
+> **Para levantar el proyecto hoy, seguí [CONTRIBUTING.md](../CONTRIBUTING.md) §6**, que está al día: usuarios de prueba, dónde ver los códigos en desarrollo y la lista completa de scripts de verificación.
+
 > **Lo primero, si volvés a trabajar después de un tiempo:** corré `docker compose down -v` desde `tierra-infra` antes de arrancar el backend. El seed dejó de ser una migración versionada y sin eso Flyway no arranca. Detalle en la sección 4.
 
 ---

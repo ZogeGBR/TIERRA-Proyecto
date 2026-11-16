@@ -12,23 +12,26 @@ Plataforma integral de comercio electrónico para la venta de bicicletas, indume
 El repositorio está organizado en tres componentes principales:
 
 ```text
-Pagina/
-├── tierra-infra/          # Base de datos PostgreSQL 16 y Docker Compose
-│   ├── docker-compose.yml # Definición del contenedor tierra-postgres
-│   └── init-db/           # Scripts SQL iniciales (01-schema.sql y 02-seed-data.sql)
+TIERRA-Proyecto/
+├── tierra-infra/             # Base de datos PostgreSQL 16 en Docker
+│   ├── docker-compose.yml    # Sólo la base: el que se usa para desarrollar
+│   └── stack/                # Base + backend + frontend en contenedores, para demos
 │
-├── tierra-backend/      # API REST en Spring Boot 3 + Java 17 + Hibernate
-│   ├── src/               # Controladores, Servicios, Entidades JPA, DTOs y Jobs
-│   ├── schema.sql         # Esquema relacional v3 de referencia
-│   └── pom.xml            # Dependencias de Maven
+├── tierra-backend/           # API REST en Spring Boot 3.3 + Java 17 + Hibernate
+│   ├── src/                  # Controladores, servicios, entidades JPA, DTOs y jobs
+│   │   └── main/resources/db/  # Migraciones de Flyway (migration/) y seed de prueba (dev/)
+│   ├── run-dev.ps1           # Arranca el backend leyendo el .env de la raíz
+│   ├── probar-*.ps1          # Scripts de verificación contra la API
+│   └── pom.xml               # Dependencias de Maven (se usa con el wrapper .\mvnw)
 │
-├── tierra-frontend/   # Interfaz web en Next.js 14 + React 18 + TailwindCSS
-│   ├── app/               # Rutas de App Router (catálogo, carrito, checkout, alquiler)
-│   ├── components/        # Componentes reutilizables de UI
-│   └── package.json       # Dependencias de Node.js
+├── tierra-frontend/          # Interfaz web en Next.js 15.5 + React 19 + TailwindCSS
+│   ├── app/                  # Rutas de App Router (catálogo, carrito, checkout, alquiler, login)
+│   ├── components/           # Componentes reutilizables de UI
+│   └── package.json          # Dependencias de Node.js
 │
-├── .vscode/               # Configuraciones de ejecución y depuración para el IDE
-└── TIERRA-...             # Diagramas UML de clases, contratos y políticas legales
+├── docs/                     # Decisiones de arquitectura (ADR), guía de ramas y entregas
+├── .vscode/                  # Configuración de ejecución y depuración para el IDE
+└── TIERRA-...                # Diagramas UML de clases, contratos y políticas legales
 ```
 
 ---
@@ -41,7 +44,7 @@ Antes de comenzar, verificá tener instalado el software necesario. Si te falta 
 | :--- | :--- | :--- |
 | **Docker Desktop** | Última versión estable | `docker --version` |
 | **Java JDK** | Java 17 LTS | `java -version` |
-| **Node.js** | v18.0 o superior (recomendado LTS) | `node -v` |
+| **Node.js** | v18.18 o superior (recomendado: la LTS actual) | `node -v` |
 | **npm** | v9 o superior | `npm -v` |
 | **Git** | Cualquier versión reciente | `git --version` |
 
@@ -69,7 +72,7 @@ Si todavía no tenés instalada alguna de las herramientas, podés instalarlas d
   winget install EclipseAdoptium.Temurin.17.JDK
   ```
 * **Opción B (Descarga web)**: [Descargar Eclipse Temurin JDK 17](https://adoptium.net/temurin/releases/?version=17) o [Oracle JDK 17](https://www.oracle.com/java/technologies/downloads/#java17).
-* Recordá reiniciar la terminal para que reconozca la variable de entorno `JAVA_HOME` y el comando `java`.
+* Recordá reiniciar la terminal para que reconozca el comando `java`. Lo que usa Maven es la variable `JAVA_HOME`: si `.\mvnw -v` no encuentra Java, configurala como explica [CONTRIBUTING.md §2.2](CONTRIBUTING.md#22--java-17).
 
 ### 3. Node.js y npm
 * **Opción A (Comando)**:
@@ -88,6 +91,27 @@ Si todavía no tenés instalada alguna de las herramientas, podés instalarlas d
 
 El orden correcto de inicio es: **1. Base de Datos ➜ 2. Backend ➜ 3. Frontend**.
 
+Esta es la versión corta. La guía completa, con el detalle de cada variable y los problemas conocidos, está en [CONTRIBUTING.md §6](CONTRIBUTING.md#6-levantar-el-proyecto-en-local).
+
+---
+
+### Paso 0: Configuración inicial (una sola vez)
+
+Desde la raíz del repo, creá los dos archivos de entorno a partir de sus plantillas:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item tierra-frontend\.env.local.example tierra-frontend\.env.local
+```
+
+El `.env` de la raíz ya sirve para desarrollar tal como viene. Para que el pago con Mercado Pago funcione de verdad, reemplazá `MP_ACCESS_TOKEN` por un access token de prueba propio (se genera gratis en el panel de desarrolladores de Mercado Pago). Ninguno de los dos archivos se sube al repo.
+
+Además, permití ejecutar los scripts de PowerShell del proyecto ([CONTRIBUTING.md §2.3](CONTRIBUTING.md#23--scripts-de-powershell)):
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
 ---
 
 ### Paso 1: Base de Datos (Docker)
@@ -98,20 +122,21 @@ El orden correcto de inicio es: **1. Base de Datos ➜ 2. Backend ➜ 3. Fronten
    cd tierra-infra
    docker compose up -d
    ```
-3. La primera vez se ejecutarán automáticamente los scripts dentro de `init-db/`:
-   * `01-schema.sql`: Crea las tablas del esquema relacional v3.
-   * `02-seed-data.sql`: Carga datos de prueba (categorías, bicicletas, cascos, indumentaria y usuarios demo).
-4. Verificá que el contenedor esté activo:
+   *(O, desde la raíz del repo: `npm run db:up`.)*
+3. Verificá que el contenedor esté activo:
    ```powershell
    docker compose ps
    ```
    *(Debe figurar `tierra-postgres` en estado `Up` o `running` exponiendo el puerto `5432`).*
 
-> 💡 **Nota para reiniciar la base**: Si alguna vez modificás los scripts de base de datos o querés reiniciar todos los datos a cero, ejecutá:
+La base arranca vacía: **las tablas las crea el backend** al arrancar (con Flyway) y, con el perfil `dev`, también carga los datos de prueba. No hay scripts SQL que correr a mano.
+
+> 💡 **Nota para reiniciar la base**: no hace falta en el día a día, porque los datos se conservan y el backend aplica solo las migraciones nuevas. Si querés volver a cero (o cambiás a una rama con menos migraciones, ver [CONTRIBUTING.md §6.7](CONTRIBUTING.md#67--resetear-la-base-desde-cero)), desde `tierra-infra`:
 > ```powershell
 > docker compose down -v
 > docker compose up -d
 > ```
+> *(O, desde la raíz del repo: `npm run db:reset`. Borra todos los datos.)*
 
 ---
 
@@ -122,57 +147,59 @@ El backend corre en el puerto **`8080`** y se conecta a PostgreSQL en `localhost
 #### Opción recomendada: Ejecutar desde el IDE
 1. Abrí el archivo [`TierraApplication.java`](tierra-backend/src/main/java/com/tierra/ecommerce/TierraApplication.java).
 2. Hacé clic en el botón **Run** o **Debug** arriba de la función `main` o en el panel de ejecución.
-3. El proyecto ya incluye el archivo `.vscode/launch.json` configurado con las variables de entorno de desarrollo (`DB_PASSWORD` y `MP_ACCESS_TOKEN`).
+3. El `.vscode/launch.json` lee las variables de entorno de tu `.env` de la raíz (Paso 0), así que no hay que cargarlas a mano.
 
 #### Opción alternativa: Ejecutar por consola (PowerShell)
-En una terminal en la carpeta `tierra-backend`:
+En una terminal, desde la raíz del repo:
 ```powershell
-cd c:\Mati\F97\Tierra\Pagina\tierra-backend
-$env:DB_PASSWORD="tierra_dev_local"
-$env:MP_ACCESS_TOKEN="TEST-0000000000000000-000000-00000000000000000000000000000000-000000000"
-$env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"
+cd tierra-backend
+.\run-dev.ps1
 ```
-Si tenés Maven instalado globalmente:
-```powershell
-mvn spring-boot:run
-```
+El script lee tu `.env`, exporta las variables y arranca el backend con el wrapper de Maven (`.\mvnw`). Maven no lee el `.env` por su cuenta: sin el script, hay que exportar cada variable a mano ([CONTRIBUTING.md §6.2](CONTRIBUTING.md#62--backend)).
 
 #### Verificación del Backend
 Abrí en el navegador o en Postman:
 [http://localhost:8080/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001](http://localhost:8080/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001)
-Deberías ver una respuesta JSON con la lista de bicicletas cargadas en la base.
+Deberías ver una respuesta JSON con la bicicleta de prueba.
 
 ---
 
 ### Paso 3: Frontend (Next.js)
 
-En **otra ventana de terminal**:
+En **otra ventana de terminal**, desde la raíz del repo:
 
 1. Navegá a la carpeta del frontend:
    ```powershell
-   cd c:\Mati\F97\Tierra\Pagina\tierra-frontend
+   cd tierra-frontend
    ```
-2. Creá el archivo de variables locales de entorno (solo la primera vez):
-   ```powershell
-   Copy-Item .env.local.example .env.local
-   ```
-   *(Contiene `NEXT_PUBLIC_API_URL=http://localhost:8080/api`).*
-3. Instalá los paquetes de Node.js:
+2. Instalá los paquetes de Node.js:
    ```powershell
    npm install
    ```
-4. Iniciá el servidor de desarrollo:
+3. Iniciá el servidor de desarrollo:
    ```powershell
    npm run dev
    ```
-5. Abrí en tu navegador:
+4. Abrí en tu navegador:
    **[http://localhost:3000](http://localhost:3000)**
+
+*(El `.env.local` del Paso 0 contiene `NEXT_PUBLIC_API_URL=http://localhost:8080/api`.)*
 
 ---
 
 ## 🧪 Datos de Prueba Disponibles
 
-El script inicial `02-seed-data.sql` precarga identificadores útiles para pruebas:
+El seed de desarrollo (`tierra-backend/src/main/resources/db/dev/R__seed_dev.sql`) precarga datos útiles para pruebas.
+
+* **Usuarios de prueba**: los clientes **no tienen contraseña** (decisión [0005](docs/decisiones/0005-acceso-por-codigo-y-compra-sin-cuenta.md)): entran con un código de seis dígitos. La contraseña es sólo para el equipo.
+
+  | Email | Rol | Cómo entra |
+  | :--- | :--- | :--- |
+  | `test@tierra.esquel` | Cliente | Con código, en `/login` |
+  | `mostrador@tierra.esquel` | Operador | Con la contraseña `tierra2026`, en `/equipo` |
+  | `admin@tierra.esquel` | Administrador | Con la contraseña `tierra2026`, en `/equipo` |
+
+  Mientras no exista el envío de emails, en desarrollo el código aparece en el log del backend y en un archivo dentro de `target/codigos-dev/` ([CONTRIBUTING.md §6.3](CONTRIBUTING.md#63--datos-de-prueba)).
 
 * **Categorías para filtrar el catálogo**:
   * Bicicletas: `c0000000-0000-0000-0000-000000000001`
@@ -181,10 +208,8 @@ El script inicial `02-seed-data.sql` precarga identificadores útiles para prueb
   * Carpas: `c0000000-0000-0000-0000-000000000005`
   * Mochilas: `c0000000-0000-0000-0000-000000000006`
   * Cascos: `c0000000-0000-0000-0000-000000000007`
-* **Usuario y Dirección de prueba para pedidos**:
-  * `usuarioId`: `99000000-0000-0000-0000-000000000001`
-  * `tipoEntrega`: `ENVIO_DOMICILIO` (o `RETIRO_LOCAL`)
-  * `direccionEnvioId`: `88000000-0000-0000-0000-000000000001` (requerido si es domicilio)
+
+* **Scripts de verificación**: en `tierra-backend/` hay scripts `probar-*.ps1` que prueban la API contra el backend y la base reales. Qué verifica cada uno está en [CONTRIBUTING.md §6.5](CONTRIBUTING.md#65--scripts-de-verificación).
 
 ---
 
@@ -210,9 +235,8 @@ Si un proceso quedó colgado en segundo plano ocupando el puerto:
   ```
 
 ### 4. Advertencias de vulnerabilidades en `npm install`
-* Las advertencias sobre versiones de `next`, `glob` o `minimatch` no impiden el funcionamiento local.
-* Para actualizar a la última versión con parches de la rama 14 sin romper librerías:
-  ```powershell
-  npm install next@14.2.35
-  ```
-* Evitá usar `npm audit fix --force` ya que podría introducir cambios incompatibles con la versión actual del proyecto.
+* Las advertencias de `npm audit` no impiden el funcionamiento local.
+* Evitá usar `npm audit fix --force`: puede actualizar dependencias a versiones mayores incompatibles con el proyecto. Las actualizaciones de versión (por ejemplo, de Next.js) se hacen en su propia rama y PR.
+
+### 5. Otros errores
+Los problemas conocidos del backend (zona horaria, password de la base, Flyway, scripts de PowerShell bloqueados) están en [CONTRIBUTING.md §8](CONTRIBUTING.md#8-problemas-conocidos-y-cómo-resolverlos).

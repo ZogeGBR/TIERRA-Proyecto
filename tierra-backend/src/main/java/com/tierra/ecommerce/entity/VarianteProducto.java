@@ -36,8 +36,8 @@ public class VarianteProducto {
     private String color;
 
     // CACHÉ mantenida por InventarioService, no se toca directamente desde
-    // otros servicios. stockReservado es lo que el carrito tiene bloqueado
-    // con TTL mientras el pago no se confirma (ver ReservaStock).
+    // otros servicios. stockReservado es lo que tienen bloqueado los pedidos
+    // en curso, con TTL, mientras el pago no se confirma (ver ReservaStock).
     @Column(nullable = false)
     private int stock = 0;
 

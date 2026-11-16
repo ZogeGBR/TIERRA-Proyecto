@@ -12,7 +12,7 @@ transitoria, es una decisión de negocio estable.
 **Ningún service, salvo `InventarioService`, modifica `stock` ni
 `stock_reservado` de una variante.** Reservar (al armar el pedido),
 confirmar venta (al pagar), liberar (si el pago falla o se abandona el
-carrito), ajustar (alta de mercadería nueva) — todo pasa por ahí.
+pedido), ajustar (alta de mercadería nueva) — todo pasa por ahí.
 
 ## Flujo de venta
 
@@ -56,6 +56,10 @@ Las reglas por endpoint viven en `SecurityConfig`, y su cierre es
 
 ## Lo que este backend NO hace (a propósito)
 
+- **No guarda el carrito** — vive en el navegador (`localStorage`) y el
+  checkout recibe los productos en el pedido. El stock se reserva recién
+  al crear el pedido. Las tablas de carrito del esquema original se
+  borraron en la V13 (tarea 17).
 - **No gestiona el stock del local** — eso vive en Andino, fuera de este
   sistema. No hay endpoints de venta de mostrador ni de sesión de caja.
 - **No sincroniza inventario entre canales** — si un producto se agota en

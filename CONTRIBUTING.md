@@ -34,11 +34,14 @@ Una sola vez, la primera vez:
 git config --global core.autocrlf false
 git config --global user.name "Tu Nombre"
 git config --global user.email "el-mismo-mail-de-tu-cuenta-de-github"
+git config --global push.autoSetupRemote true
 ```
 
 `core.autocrlf false` es importante: con `.gitattributes` en el repo, dejarlo activado vuelve a generar el problema de los saltos de línea.
 
-El email tiene que coincidir con uno verificado en tu cuenta de GitHub, o tus commits no se te van a atribuir.
+El email tiene que coincidir con uno verificado en tu cuenta de GitHub, o tus commits no se te van a atribuir. Si no querés que tu email personal quede en el historial (el repositorio es público), usá la dirección `...@users.noreply.github.com` que GitHub te asigna en *Settings → Emails*.
+
+`push.autoSetupRemote true` hace que el primer `git push` de una rama nueva cree la rama en GitHub y la vincule, sin el error *"has no upstream branch"*.
 
 ### 2.2 — Java 17
 
@@ -68,6 +71,12 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 `RemoteSigned` permite los scripts locales y exige firma sólo a los descargados de internet. No requiere permisos de administrador. Si preferís no cambiarlo de forma permanente, `Set-ExecutionPolicy Bypass -Scope Process` afecta sólo a la terminal actual.
 
+**Scripts que llegaron en un zip o descargados del navegador.** Windows los marca como "descargados de internet" y `RemoteSigned` los rechaza con *"no está firmado digitalmente"*, aunque el mismo archivo traído con `git pull` funcione. Se desbloquean una vez:
+
+```powershell
+Get-ChildItem .\tierra-backend\*.ps1 | Unblock-File
+```
+
 ### 2.4 — Maven: no hace falta instalarlo
 
 El repo incluye el wrapper. Usá siempre **`.\mvnw`**, nunca `mvn`:
@@ -91,11 +100,13 @@ Hay **dos** archivos de entorno, uno por runtime. No se pueden unificar: Next.js
 | Archivo | Para qué | Se crea con |
 |---|---|---|
 | `.env` (raíz) | Backend: credenciales de la base, token de MP, timezone | `Copy-Item .env.example .env` |
-| `tierra-frontend/.env.local` | Frontend: URL de la API | `Copy-Item .env.local.example .env.local` |
+| `tierra-frontend/.env.local` | Frontend: URL de la API | `Copy-Item .env.local.example .env.local`, dentro de `tierra-frontend` |
 
 Ninguno de los dos se sube. Los `.example` sí.
 
 Completá tu `.env` con tu propio access token de prueba de Mercado Pago (se genera gratis en el panel de desarrolladores). El que viene en el `.example` es de relleno: alcanza para que la aplicación arranque, pero el checkout no va a funcionar.
+
+El resto de las variables del `.example` ya sirven para desarrollar tal como vienen. En particular, `CODIGO_ACCESO_CLAVE` (la clave con la que se protegen los códigos de acceso) viene **comentada**, y así tiene que quedar: con el perfil `dev` el backend usa una clave fija de desarrollo. Si la descomentás sin valor, el backend no arranca (`falta CODIGO_ACCESO_CLAVE`), porque una variable vacía reemplaza a la clave del perfil. Fuera del perfil `dev` hace falta una clave propia.
 
 > Si ya tenías el repo clonado de antes y ves archivos modificados que no tocaste:
 > ```powershell
@@ -111,19 +122,26 @@ Completá tu `.env` con tu propio access token de prueba de Mercado Pago (se gen
 
 ```
 TIERRA-Proyecto/
-├── tierra-infra/          # PostgreSQL 16 en Docker
-│   ├── docker-compose.yml
-│                          # (el seed vive en el backend, ver §6.3)
+├── tierra-infra/
+│   ├── docker-compose.yml # Sólo PostgreSQL 16: el que se usa para desarrollar (§6.1)
+│   └── stack/             # Base + backend + frontend en contenedores, para demos
 │
-├── tierra-backend/        # API REST — Spring Boot 3 + Java 17
-│   └── src/main/resources/db/migration/   # Migraciones de Flyway
+├── tierra-backend/        # API REST — Spring Boot 3.3 + Java 17
+│   ├── src/main/resources/db/migration/   # Migraciones de Flyway (§7)
+│   ├── src/main/resources/db/dev/         # Seed de datos de prueba (§6.3)
+│   ├── run-dev.ps1        # Arranca el backend leyendo el .env (§6.2)
+│   └── probar-*.ps1       # Scripts de verificación (§6.5)
 │
-├── tierra-frontend/       # Next.js 14 + React 18 + Tailwind
+├── tierra-frontend/       # Next.js 15.5 + React 19 + Tailwind
 │
-├── docs/decisiones/       # Decisiones de arquitectura (ADR)
+├── docs/
+│   ├── decisiones/        # Decisiones de arquitectura (ADR, §10)
+│   ├── guia-ramas/        # Guía visual de ramas y commits
+│   └── ENTREGA-FASE-1.md  # Qué se hizo en la Fase 1
 ├── .github/CODEOWNERS     # Responsables de revisión por carpeta (§4.7)
 ├── .gitattributes         # Normalización de saltos de línea
 ├── .env.example           # Plantilla de variables del backend
+├── package.json           # Atajos de npm para el frontend y la base (§6.1)
 └── CONTRIBUTING.md        # Este archivo
 ```
 
@@ -204,6 +222,10 @@ git push -u origin feat/back-registro-usuario
 ```
 
 Después abrís el Pull Request en GitHub y pedís revisión. Cuando está aprobado se mergea. Borrá la rama después del merge.
+
+> Si configuraste `push.autoSetupRemote` (§2.1), el paso 5 se reduce a `git push`.
+>
+> **Durante el cierre de la Fase 2 la revisión se reemplaza por verificación:** ver §4.12.
 
 > ⚠️ **El PR apunta a `develop`, no a `main`.** Al abrirlo, verificá en GitHub que el campo *base* diga `develop`. Un PR de una rama de tarea contra `main` se salta la integración.
 
@@ -322,9 +344,31 @@ Cuando exista integración continua (fase 5), se suma **Require status checks to
 
 Si tu rama va a tocar los mismos archivos que la de otra persona, hablalo antes. Es más barato coordinarse cinco minutos que resolver un conflicto de tres archivos después.
 
-### 4.11 — Transición al flujo con `develop`
+### 4.11 — Antes de partir de `develop`, mirá qué cambió
 
-> **Nota temporal:** `develop` se crea a partir de `main` el día que se mergea este documento. Desde ese momento, las ramas nuevas parten de `develop` y los PRs apuntan a `develop`. Las ramas abiertas que ya salieron de `main` pueden terminar su PR como estaban; la próxima tarea, ya con el flujo nuevo. Cuando esto esté asimilado, se borra esta nota.
+`git pull` sobre `develop` puede traer migraciones nuevas (§7) o cambios en los scripts. Para ver qué entró desde la última vez:
+
+```powershell
+git switch develop
+git pull
+git --no-pager log --oneline -10
+```
+
+Si alguno de esos commits agrega una migración, el backend la aplica solo al arrancar. Si vas a volver a una rama **más vieja**, mirá la §6.7.
+
+### 4.12 — Metodología temporal: cierre de la Fase 2
+
+> **Regla temporal, vigente hasta el cierre de la Fase 2.** Cuando termine, esta sección se borra y vuelve a valer el flujo con revisión de §4.3 y §4.8.
+
+Por falta de tiempo, las tareas que quedan de la Fase 2 no esperan una revisión de otra persona para mergearse. La revisión se reemplaza por **verificación**:
+
+1. **Una tarea = una rama desde `develop` = un PR.** Las convenciones de nombres (§4.2) y commits (§5) no cambian.
+2. **Quien abre el PR adjunta la verificación** en la descripción: tests del backend (`.\mvnw clean test`), los scripts `probar-*.ps1` que correspondan contra el backend y la base reales, y, si se tocó el frontend, `npm run build`, `npm run lint` y la prueba de las pantallas afectadas.
+3. **Antes de mergear se repite una verificación corta en otra máquina:** `.\mvnw clean test` y el script de la tarea.
+4. **Mergea sólo Matías, con *Squash and merge*** (§4.4). Nadie más mergea a `develop`, para que haya un único punto que controla lo que entra.
+5. **Después de cada merge**, se actualiza `develop` y se vuelve a correr todo (§4.11) antes de empezar la tarea siguiente.
+
+Lo que **no** cambia: nunca se pushea directo a `main` ni a `develop`, nunca se hace *force push* a una rama compartida, no se edita una migración mergeada (§7) y no se commitean secretos (§9).
 
 ---
 
@@ -369,6 +413,19 @@ docker compose logs postgres --tail 5
 
 Esperá a ver `database system is ready to accept connections`. Si arrancás el backend antes, va a fallar la conexión.
 
+Lo mismo, sin moverte de la raíz del repo, con los atajos del `package.json`:
+
+| Comando | Qué hace |
+|---|---|
+| `npm run db:up` | Levanta la base (`docker compose up -d` de `tierra-infra`) |
+| `npm run db:down` | La baja, **sin borrar** los datos |
+| `npm run db:logs` | Muestra el log de Postgres en vivo (`Ctrl+C` para salir) |
+| `npm run db:reset` | **Borra todos los datos** y la vuelve a levantar vacía (§6.7) |
+
+Todos apuntan a `tierra-infra/docker-compose.yml`, nunca al del stack.
+
+**No hace falta resetearla cada día.** No es necesario hacer `docker compose down -v` cada vez que empezás a trabajar: los datos se conservan entre reinicios y Flyway aplica solo las migraciones nuevas. Resetear tiene sentido en los casos de la §6.7.
+
 ### 6.2 — Backend
 
 **Desde VS Code (recomendado):** botón Run sobre `TierraApplication.java`. El `launch.json` lee las variables de tu `.env` automáticamente.
@@ -396,7 +453,15 @@ $env:SPRING_PROFILES_ACTIVE="dev"
 
 `JAVA_TOOL_OPTIONS` **no es opcional en Windows**: ver §8.
 
-Flyway crea las tablas al arrancar. En el log tenés que ver `Successfully applied 1 migration`.
+Flyway crea las tablas al arrancar. Con la base vacía, en el log tenés que ver una línea `Migrating schema "public" to version ...` por cada migración y al final:
+
+```
+Successfully applied 9 migrations to schema "public", now at version v8
+```
+
+(Ocho migraciones versionadas más el seed, que también cuenta. El número crece con cada migración nueva.) Las veces siguientes, si no entró ninguna migración nueva, dice `Schema "public" is up to date. No migration necessary.`
+
+Con el perfil `dev` también aparece una línea `[DEV] Los códigos de acceso se escriben en ...` con la carpeta donde vas a encontrar los códigos de acceso (§6.3).
 
 ### 6.3 — Datos de prueba
 
@@ -404,13 +469,20 @@ Flyway crea las tablas al arrancar. En el log tenés que ver `Successfully appli
 
 Vive en `tierra-backend/src/main/resources/db/dev/R__seed_dev.sql` y es una migración **repetible**: si querés sumar productos de prueba, editá ese archivo y reiniciá el backend. No hace falta borrar la base — todos los `INSERT` usan `ON CONFLICT DO NOTHING`.
 
-Los tres usuarios de prueba comparten la contraseña **`tierra2026`**:
+Hay tres usuarios de prueba. Desde la decisión 0005, **los clientes no tienen contraseña**: entran con un código de seis dígitos que piden por email. La contraseña queda sólo para el equipo.
 
-| Email | Rol |
-|---|---|
-| `test@tierra.esquel` | CLIENTE |
-| `mostrador@tierra.esquel` | OPERADOR |
-| `admin@tierra.esquel` | ADMIN |
+| Email | Rol | Cómo entra |
+|---|---|---|
+| `test@tierra.esquel` | CLIENTE | Con código, en `/login` |
+| `mostrador@tierra.esquel` | OPERADOR | Con la contraseña **`tierra2026`**, en `/equipo` |
+| `admin@tierra.esquel` | ADMIN | Con la contraseña **`tierra2026`**, en `/equipo` |
+
+**Dónde ver el código en desarrollo.** Todavía no hay módulo de emails, así que con el perfil `dev` el código no se manda: el backend lo escribe en dos lugares.
+
+- En el log del backend, en una línea `[DEV] Código de acceso para test@tierra.esquel: 123456`.
+- En el archivo `target/codigos-dev/test@tierra.esquel.txt`, relativo a la carpeta desde la que arrancaste el backend: `tierra-backend/target/codigos-dev/` si usaste `run-dev.ps1`, o `target/codigos-dev/` en la raíz del repo si arrancaste desde VS Code. La ruta exacta sale en el log al arrancar (§6.2).
+
+El código vence a los 10 minutos y pedir uno nuevo invalida el anterior. Ese archivo y esa línea existen **sólo** con el perfil `dev`: fuera de él, ninguna parte del sistema muestra un código.
 
 > Si arrancás **sin** el perfil `dev`, el backend levanta igual pero la base queda con el esquema vacío. Es a propósito: el comportamiento por defecto es el de producción, donde estos datos no tienen que existir.
 
@@ -426,16 +498,22 @@ npm run dev
 
 ### 6.5 — Scripts de verificación
 
-En `tierra-backend/` hay scripts que comprueban el comportamiento de la autenticación, los permisos y los pagos. Conviene correrlos después de tocar `SecurityConfig`, `AuthService` o cualquier contrato de la API:
+En `tierra-backend/` hay scripts que comprueban el comportamiento de la API contra el backend y la base reales. Conviene correrlos después de tocar `SecurityConfig`, `AuthService`, `CodigoAccesoService` o cualquier contrato de la API. Se corren desde `tierra-backend`, con el backend levantado en el perfil `dev`:
 
 | Script | Qué verifica |
 |---|---|
-| `probar-auth.ps1` | Login, logout, bloqueo por intentos, CSRF, exención del webhook |
-| `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío |
-| `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador |
+| `probar-codigo.ps1` | El acceso de clientes por código: la misma respuesta para cualquier email, el código correcto abre sesión, pedir uno nuevo invalida el anterior, límite de códigos por cuarto de hora, intentos fallidos, bloqueo, un solo canal por cuenta y que las rutas viejas de registro y login ya no existan |
+| `probar-auth.ps1` | El login del equipo con contraseña: login y logout, el mismo mensaje para cualquier credencial incorrecta, bloqueo por intentos, CSRF y exención del webhook |
+| `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador, con el cliente entrando por código y el equipo por contraseña |
+| `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío. Con la tarea 9 (checkout sin cuenta) se reemplaza por `probar-checkout.ps1` |
+| `probar-catalogo.ps1` | Los endpoints de categorías y marcas, comparando la respuesta con lo que hay en la base |
 | `probar-webhook.ps1` | La notificación de pago de Mercado Pago: rechaza una firma falsa, concilia un pago de prueba y no lo procesa dos veces. Recibe el número de operación de un pago hecho con credenciales de prueba (`-PagoId`) |
 
-Cada caso imprime el código obtenido y el esperado. Todos tienen que decir `OK`.
+`probar-comun.ps1` no se ejecuta solo: tiene las funciones que comparten los demás. Los scripts leen la base a través del contenedor `tierra-postgres`, así que Docker tiene que estar corriendo.
+
+Cada caso imprime el código obtenido y el esperado. Todos tienen que decir `OK`. Se pueden correr cuantas veces haga falta: los que tocan el acceso reinician los códigos y desbloquean las cuentas de prueba antes de empezar.
+
+Si Windows se niega a ejecutarlos con *"no está firmado digitalmente"*, ver §2.3.
 
 > Son un sustituto temporal de los tests automatizados, que llegan en la fase 5: sólo protegen mientras alguien se acuerde de ejecutarlos.
 
@@ -457,7 +535,16 @@ docker compose down -v      # el -v borra el volumen y con él todos los datos
 docker compose up -d
 ```
 
-Después arrancá el backend: Flyway recrea las tablas y, con el perfil `dev`, vuelve a cargar el seed solo.
+O, desde la raíz del repo, `npm run db:reset`. Después arrancá el backend: Flyway recrea las tablas y, con el perfil `dev`, vuelve a cargar el seed solo.
+
+> ⚠️ `docker compose down -v` **siempre desde `tierra-infra`** (o con `npm run db:reset`). Ejecutado en otra carpeta, `docker compose` busca el archivo subiendo por las carpetas padre y puede terminar actuando sobre otro proyecto, o fallar sin decir por qué.
+
+**Cuándo hace falta resetear.** No en el día a día: los datos sobreviven entre reinicios y el backend aplica solo las migraciones nuevas. Sí en estos casos:
+
+- **Cambiás a una rama con menos migraciones** que las que ya tiene tu base (una rama vieja, o una que salió de `develop` antes de que entrara una migración). Flyway no deshace migraciones: la base queda con un esquema que el código de esa rama no espera, y el backend no arranca o falla el seed (ver §8). Reseteá, trabajá en esa rama, y al volver a `develop` reseteá otra vez.
+- **Un error de Flyway de validación o checksum** (`Validate failed`, `checksum mismatch`): alguien editó una migración ya aplicada en tu base. Si fue en tu rama, deshacé el cambio y creá una migración nueva (§7); si ya está en `develop`, reseteá.
+- **La password de la base no coincide** con la del `.env` (ver §8).
+- **Querés volver a los datos de prueba limpios**, por ejemplo después de crear muchos pedidos a mano.
 
 ---
 
@@ -468,9 +555,10 @@ Después arrancá el backend: Flyway recrea las tablas y, con el perfil `dev`, v
 Para cambiar algo, creás un archivo nuevo en `tierra-backend/src/main/resources/db/migration/`:
 
 ```
-V2__agregar_controla_stock_a_variantes.sql
-V3__pedidos_admiten_invitado.sql
+V9__pedidos_datos_de_contacto.sql
 ```
+
+(Es un ejemplo: el número que te toca es el siguiente al último que haya en la carpeta.)
 
 Reglas:
 
@@ -505,7 +593,23 @@ Usá `.\mvnw`, no `mvn`. El proyecto trae el wrapper justamente para no depender
 
 ### El backend arranca pero `/api/productos` devuelve lista vacía
 
-Es el comportamiento actual: sin el parámetro `categoriaId`, el endpoint devuelve una lista vacía a propósito. Está registrado como pendiente en la auditoría.
+Es el comportamiento actual: sin `categoriaId` ni `marcaId`, el endpoint devuelve una lista vacía a propósito. Probá con `?categoriaId=c0000000-0000-0000-0000-000000000001` (§6.6). El listado general con filtros y paginación llega con la tarea 6 de la Fase 2.
+
+### El backend no arranca: falla `R__seed_dev.sql` con `violates check constraint`
+
+Tu base tiene migraciones que el código de la rama actual no conoce: típicamente, cambiaste a una rama que salió de `develop` antes de que entrara una migración nueva. El seed de esa rama inserta datos que una restricción de la migración nueva ya no admite (pasó con `chk_usuarios_metodo_acceso`, de la V8: el seed viejo le daba contraseña a `test@`).
+
+Reseteá la base (§6.7) antes de arrancar en esa rama, y otra vez al volver a `develop`. Si la rama es tuya y sigue viva, traele lo último con `git pull --rebase origin develop`.
+
+### El backend no arranca: `Configuración del acceso por código inválida: falta CODIGO_ACCESO_CLAVE`
+
+Tenés `CODIGO_ACCESO_CLAVE=` sin valor en tu `.env`. Una variable vacía reemplaza a la clave fija del perfil `dev`, así que el backend se queda sin clave. Volvé a comentarla (`# CODIGO_ACCESO_CLAVE=`), como viene en el `.env.example` (§2.5).
+
+Si no estás en el perfil `dev`, el error es correcto: fuera de desarrollo hace falta una clave propia de al menos 32 bytes.
+
+### `docker compose` levanta el stack completo (o un proyecto que no es) sin que se lo pidas
+
+Ejecutaste `docker compose` desde una carpeta sin `docker-compose.yml`, y encontró otro subiendo por las carpetas padre. Para la base de desarrollo, entrá a `tierra-infra` o usá `npm run db:up` desde la raíz (§6.1). Si se levantó el stack, bajalo desde `tierra-infra\stack` con `docker compose down`.
 
 ### YAML: `did not find expected '-' indicator` o `found character that cannot start any token`
 
@@ -536,11 +640,15 @@ docs/decisiones/0001-tierra-rental-consulta-whatsapp.md
 
 Estructura: contexto, decisión, consecuencias. No hace falta que sea largo, sí que quede claro **por qué** se decidió así. Es lo que evita que dentro de seis semanas alguien reconstruya algo que se había descartado a propósito.
 
+Cada decisión lleva un **estado**: *propuesta*, *aceptada*, *modificada por NNNN* o *reemplazada por NNNN*. Cuando una decisión cambia, el documento viejo **no se reescribe**: se escribe uno nuevo que explique qué cambió y por qué, y al viejo se le actualiza el estado y, si hace falta, se le agrega una nota que indique qué partes quedaron sin efecto. Así queda la historia. Por ejemplo, la 0005 (compra sin cuenta y acceso por código) reemplazó a la 0002 y modificó a la 0003.
+
 ---
 
 ## 11. Antes de abrir un Pull Request
 
 - [ ] El backend compila y arranca (`.\mvnw spring-boot:run`)
+- [ ] Los tests del backend pasan (`.\mvnw clean test`)
+- [ ] Si tocaste la API, corriste los scripts de verificación que correspondan (§6.5) y todos dicen `OK`
 - [ ] El frontend compila (`npm run build`)
 - [ ] `git status` no muestra archivos que no querías subir
 - [ ] No hay credenciales, tokens ni rutas absolutas de tu máquina en el diff

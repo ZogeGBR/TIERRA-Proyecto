@@ -1,6 +1,6 @@
 # 0005 — Compra sin cuenta previa y acceso de clientes por código
 
-- **Estado:** propuesta. Se aprueba antes del día 19 de la Fase 2; ninguna de las tareas 2, 3, 4, 9, 12 y 19 empieza sin este documento aprobado.
+- **Estado:** aceptada. Las tareas 2, 3 y 4 de la Fase 2 ya se implementaron sobre ella, y las tareas 9, 12 y 19 dependen de ella.
 - **Reemplaza a:** 0002 (checkout con autenticación obligatoria).
 - **Modifica:** 0003 (la contraseña queda solo para el equipo y el registro desaparece). El resto de la 0003 sigue vigente.
 - **Fecha:** Fase 2, antes del día 19

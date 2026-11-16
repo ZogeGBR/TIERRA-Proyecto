@@ -1,7 +1,8 @@
 # Tierra — backend
 
-Spring Boot 3 + PostgreSQL. `schema.sql` en la raíz de este proyecto es el
-schema v3: solo venta online + alquiler de invierno. El local usa su
+Spring Boot 3.3 + Java 17 + PostgreSQL 16. El esquema lo gestiona Flyway,
+con las migraciones en `src/main/resources/db/migration/` (la V1 es el
+baseline del esquema v3: solo venta online + alquiler de invierno). El local usa su
 propio sistema (Andino) y el dueño pidió explícitamente que el stock de
 la web y el del local queden separados — no es una limitación técnica
 transitoria, es una decisión de negocio estable.
@@ -16,7 +17,9 @@ carrito), ajustar (alta de mercadería nueva) — todo pasa por ahí.
 ## Flujo de venta
 
 1. `POST /api/pedidos` — crea el pedido y **reserva** stock por 20 minutos
-   (`InventarioService.reservarStock`). No descuenta nada todavía.
+   (`InventarioService.reservarStock`). No descuenta nada todavía. Hoy exige
+   sesión; con la tarea 9 de la Fase 2 se reemplaza por `POST /api/checkout`,
+   que no la exige (decisión 0005).
 2. `POST /api/pagos/pedidos/{id}/preferencia` — genera el link de Mercado Pago.
 3. `POST /api/pagos/webhook` — valida la firma de Mercado Pago, consulta
    el pago real a su API y recién ahí `PagoService.confirmarPago` descuenta
@@ -28,6 +31,21 @@ carrito), ajustar (alta de mercadería nueva) — todo pasa por ahí.
    pago aprobado, libera el stock, cancela el pedido y expira el pago.
 
 Detalle y motivos en `docs/decisiones/0004-conciliacion-pagos-mercado-pago.md`.
+
+## Autenticación
+
+Sesión en cookie (decisión 0003), con dos canales de acceso (decisión 0005):
+
+- **Clientes:** sin contraseña. Piden un código de seis dígitos por email
+  (`POST /api/auth/codigo`) y lo verifican (`POST /api/auth/codigo/verificar`).
+  Según la 0005, comprar no exige cuenta (se implementa con la tarea 9).
+- **Equipo** (Administrador y Operador): email y contraseña, en
+  `POST /api/auth/equipo/login`.
+
+Hasta que exista el módulo de emails, con el perfil `dev` el código se
+escribe en el log y en `target/codigos-dev/` (ver CONTRIBUTING.md §6.3).
+Las reglas por endpoint viven en `SecurityConfig`, y su cierre es
+`denyAll()`: un endpoint nuevo sin regla queda cerrado.
 
 ## Lo que este backend NO hace (a propósito)
 
@@ -45,8 +63,6 @@ se sacó por completo cuando se confirmó que no hacía falta.)
 - **Panel de administración** para cargar catálogo y hacer ajustes de
   stock — hoy `InventarioService.ajustarStock` existe pero no tiene
   controller.
-- **Login/autenticación** — `spring-boot-starter-security` está en el
-  `pom.xml` pero sin configurar (hoy deja todo abierto con `SecurityConfig`).
 - **Facturación electrónica** — ya emiten factura hoy con un sistema
   intermedio (no ARCA directo); falta identificar cuál e integrarlo.
 - **Costo de envío fijo** en `PedidoService` — el cliente cotiza los

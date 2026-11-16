@@ -1,95 +1,72 @@
-# Tierra — levantar todo en local
+# Tierra — infraestructura local
 
-Este paquete tiene lo que falta entre `tierra-backend` y `tierra-frontend`
-para verlo funcionando de punta a punta: la base de datos con el schema
-v3 ya aplicado y datos de prueba cargados.
+Esta carpeta tiene la base de datos de desarrollo: **PostgreSQL 16 en Docker**.
+El backend y el frontend corren en tu máquina, fuera de Docker.
 
-Ver también `tierra-como-levantar-el-proyecto.md` para la guía paso a paso
-completa en PowerShell (Windows), con la rutina del día a día y los
-problemas conocidos ya resueltos.
+La guía completa para levantar el proyecto (variables de entorno, backend,
+frontend, usuarios de prueba y scripts de verificación) está en
+[CONTRIBUTING.md §6](../CONTRIBUTING.md#6-levantar-el-proyecto-en-local).
+Acá está sólo lo que corresponde a esta carpeta.
 
-## 0. Qué necesitás instalado
+## Qué hay
 
-- **Docker Desktop** — para la base.
-- **Java** y **Maven** — para el backend.
-- **Node.js 18+** — para el frontend.
+| Archivo | Para qué |
+|---|---|
+| `docker-compose.yml` | Sólo PostgreSQL (contenedor `tierra-postgres`, puerto 5432). **Es el que se usa para desarrollar.** |
+| `stack/` | Base + backend + frontend en contenedores, para mostrar el sistema en una máquina sin Java ni Node. No se usa para desarrollar. Ver [`stack/README.md`](stack/README.md). |
 
-## 1. Base de datos
+Los dos no pueden correr a la vez: comparten los puertos 5432, 8080 y 3000.
 
-Parado en esta carpeta (`tierra-infra`):
+## Levantar la base
 
-```
+Con Docker Desktop abierto y el motor corriendo, parado en esta carpeta:
+
+```powershell
 docker compose up -d
+docker compose logs postgres --tail 5
 ```
 
-La primera vez que se levanta, Postgres ejecuta automáticamente
-`init-db/01-schema.sql` (crea todas las tablas) y luego
-`init-db/02-seed-data.sql` (carga marcas, categorías, productos con
-stock, equipo de alquiler y usuarios de prueba). Tarda unos segundos.
+Esperá a ver `database system is ready to accept connections`. La base
+arranca **vacía**: las tablas las crea el backend al arrancar, con Flyway, y
+los datos de prueba los carga el mismo backend con el perfil `dev`. Esta
+carpeta ya no tiene scripts SQL.
 
-Para confirmar que quedó arriba: `docker compose ps` — el contenedor
-`tierra-postgres` tiene que figurar como `healthy` o `running`.
+| Dato | Valor |
+|---|---|
+| Base | `tierra` |
+| Usuario | `tierra_app` |
+| Password | `tierra_dev_local` (la misma que `DB_PASSWORD` en el `.env` de la raíz) |
 
-**Si necesitás volver a cargar los datos desde cero** (por ejemplo,
-porque cambió el schema): los scripts de init solo corren la primera
-vez que se crea el volumen. Para forzar que corran de nuevo:
-```
-docker compose down -v   # -v borra el volumen, y con él los datos
-docker compose up -d
-```
+Desde la raíz del repo se puede hacer lo mismo sin entrar acá:
+`npm run db:up`, `npm run db:down`, `npm run db:logs` y `npm run db:reset`.
 
-## 2. Backend
+## Bajarla y resetearla
 
-En otra terminal, parado en `tierra-backend` (la subcarpeta que tiene el
-`pom.xml` adentro):
-
-```
-$env:DB_PASSWORD="tierra_dev_local"
-$env:MP_ACCESS_TOKEN="TEST-0000000000000000-000000-00000000000000000000000000000000-000000000"
-$env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"
-mvn spring-boot:run
+```powershell
+docker compose down       # la baja; los datos se conservan
+docker compose down -v    # la baja y BORRA todos los datos (el volumen)
 ```
 
-El `MP_ACCESS_TOKEN` de arriba es un valor de relleno — alcanza para que
-la aplicación arranque, pero **para que el checkout con Mercado Pago
-funcione de verdad** hay que reemplazarlo por un access token de prueba
-real, que se genera gratis en el panel de desarrolladores de Mercado Pago.
+No hace falta resetear cada vez que empezás a trabajar: los datos sobreviven
+entre reinicios y el backend aplica solo las migraciones nuevas. Cuándo sí
+hace falta (por ejemplo, al cambiar a una rama con menos migraciones) está en
+[CONTRIBUTING.md §6.7](../CONTRIBUTING.md#67--resetear-la-base-desde-cero).
 
-Si arrancó bien, en `http://localhost:8080/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001`
-debería devolver la bicicleta de prueba en JSON.
+> ⚠️ `docker compose down -v` **siempre desde esta carpeta** (o con
+> `npm run db:reset` desde la raíz). `docker compose` busca el archivo
+> subiendo por las carpetas padre: ejecutado en otro lado puede actuar sobre
+> otro proyecto.
 
-## 3. Frontend
+## Dónde está cada cosa de la base
 
-En una tercera terminal, parado en `tierra-frontend`:
+- **Esquema:** migraciones de Flyway en
+  `tierra-backend/src/main/resources/db/migration/`. Para cambiarlo se crea
+  una migración nueva; nunca se edita una ya mergeada
+  ([CONTRIBUTING.md §7](../CONTRIBUTING.md#7-cambios-en-la-base-de-datos)).
+- **Datos de prueba:** `tierra-backend/src/main/resources/db/dev/R__seed_dev.sql`,
+  que sólo se carga con el perfil `dev`.
+- **Consultar la base a mano:**
 
-```
-npm install
-npm run dev
-```
-
-Abrí `http://localhost:3000`.
-
-## 4. Datos de prueba disponibles
-
-Categorías con card propia en la home (ver `02-seed-data.sql` para el
-resto de los IDs):
-- Bicicletas: `c0000000-0000-0000-0000-000000000001`
-- Ropa deportiva: `c0000000-0000-0000-0000-000000000003`
-- Ropa urbana: `c0000000-0000-0000-0000-000000000004`
-- Carpas: `c0000000-0000-0000-0000-000000000005`
-- Mochilas: `c0000000-0000-0000-0000-000000000006`
-- Cascos: `c0000000-0000-0000-0000-000000000007`
-
-Usuario y dirección de prueba para probar el checkout directo contra la
-API (`CrearPedidoRequest` los pide porque todavía no hay login):
-- `usuarioId`: `99000000-0000-0000-0000-000000000001`
-- `tipoEntrega`: `ENVIO_DOMICILIO` (o `RETIRO_LOCAL`)
-- `direccionEnvioId`: `88000000-0000-0000-0000-000000000001` (requerido si es domicilio)
-
-## Qué todavía no vas a poder probar de punta a punta
-
-- **El checkout real desde el frontend** — no hay login todavía, así que
-  el formulario no completa `usuarioId`/`direccionEnvioId` solo. Se puede
-  probar llamando al endpoint directo con los IDs de arriba.
-- **El pago con Mercado Pago** — funciona solo si pusiste un access token
-  de prueba real en el paso 2.
+  ```powershell
+  docker exec -it tierra-postgres psql -U tierra_app -d tierra
+  ```

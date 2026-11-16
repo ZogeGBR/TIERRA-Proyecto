@@ -100,6 +100,118 @@ INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock
   ('e0000000-0000-0000-0000-000000000012', 'd0000000-0000-0000-0000-000000000007', 'CASCO-MONT-UN', 'Único', 'Verde', 8, 0, true)
 ON CONFLICT (id) DO UPDATE SET controla_stock = EXCLUDED.controla_stock, stock = EXCLUDED.stock;
 
+-- ---------- PRODUCTOS ADICIONALES PARA PROBAR EL CATÁLOGO (tarea 6) ----------
+-- Inventados, solo para desarrollo: con 7 productos no se puede probar la
+-- paginación (12 por página) ni combinar filtros. Cubren a propósito:
+--   - los cuatro géneros, talles en letras y números, colores variados;
+--   - variantes SIN stock (Campera de Plumas M Bordó, Zapatillas Trail 38,
+--     Mochila de Ataque roja): el filtro por talle o color no las cuenta;
+--   - una variante con precio adicional (Bicicleta Urbana talle L);
+--   - un producto inactivo (Guantes de Invierno), que no tiene que aparecer;
+--   - tildes en nombres y descripciones, para la búsqueda sin tildes.
+-- Sin imágenes: el frontend muestra su marcador de "sin foto".
+INSERT INTO productos (id, marca_id, categoria_id, nombre, descripcion, genero, precio, activo) VALUES
+  ('d0000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000002',
+   'c0000000-0000-0000-0000-000000000003', 'Campera de Plumas Mujer',
+   'Campera de plumas con capucha desmontable, liviana y compresible.', 'MUJER', 189990, true),
+
+  ('d0000000-0000-0000-0000-000000000009', 'b0000000-0000-0000-0000-000000000003',
+   'c0000000-0000-0000-0000-000000000003', 'Pantalón de Trekking Hombre',
+   'Pantalón desmontable de secado rápido, con protección UV.', 'HOMBRE', 79990, true),
+
+  ('d0000000-0000-0000-0000-000000000010', 'b0000000-0000-0000-0000-000000000003',
+   'c0000000-0000-0000-0000-000000000003', 'Remera Térmica',
+   'Primera capa térmica de manga larga, para frío intenso.', 'UNISEX', 34990, true),
+
+  ('d0000000-0000-0000-0000-000000000011', 'b0000000-0000-0000-0000-000000000004',
+   'c0000000-0000-0000-0000-000000000003', 'Zapatillas Trail Mujer',
+   'Zapatillas de trail con suela de alta tracción para barro y piedra.', 'MUJER', 119990, true),
+
+  ('d0000000-0000-0000-0000-000000000012', 'b0000000-0000-0000-0000-000000000005',
+   'c0000000-0000-0000-0000-000000000004', 'Zapatillas Urbanas',
+   'Zapatillas de uso diario, capellada de cuero y suela de goma.', 'UNISEX', 99990, true),
+
+  ('d0000000-0000-0000-0000-000000000013', 'b0000000-0000-0000-0000-000000000002',
+   'c0000000-0000-0000-0000-000000000004', 'Buzo Polar Niños',
+   'Buzo de micropolar con cierre entero, abrigado y liviano.', 'NINO', 44990, true),
+
+  ('d0000000-0000-0000-0000-000000000014', 'b0000000-0000-0000-0000-000000000004',
+   'c0000000-0000-0000-0000-000000000003', 'Campera Rompevientos',
+   'Rompevientos ultraliviano con capucha, se guarda en su propio bolsillo.', 'UNISEX', 69990, true),
+
+  ('d0000000-0000-0000-0000-000000000015', 'b0000000-0000-0000-0000-000000000001',
+   'c0000000-0000-0000-0000-000000000001', 'Bicicleta Urbana Rodado 28',
+   'Bicicleta urbana con cambios internos, guardabarros y portaequipaje.', 'UNISEX', 649990, true),
+
+  ('d0000000-0000-0000-0000-000000000016', 'b0000000-0000-0000-0000-000000000001',
+   'c0000000-0000-0000-0000-000000000001', 'Bicicleta Infantil Rodado 20',
+   'Bicicleta para chicos de 6 a 9 años, cuadro de aluminio.', 'NINO', 289990, true),
+
+  ('d0000000-0000-0000-0000-000000000017', 'b0000000-0000-0000-0000-000000000003',
+   'c0000000-0000-0000-0000-000000000005', 'Carpa 4 Personas',
+   'Carpa familiar con dos ábsides y doble techo impermeable.', 'UNISEX', 159990, true),
+
+  ('d0000000-0000-0000-0000-000000000018', 'b0000000-0000-0000-0000-000000000003',
+   'c0000000-0000-0000-0000-000000000005', 'Bolsa de Dormir -5 °C',
+   'Bolsa de dormir tipo momia, temperatura de confort de -5 °C.', 'UNISEX', 89990, true),
+
+  ('d0000000-0000-0000-0000-000000000019', 'b0000000-0000-0000-0000-000000000002',
+   'c0000000-0000-0000-0000-000000000006', 'Mochila de Ataque 30L',
+   'Mochila liviana para salidas de un día, con porta bastones.', 'UNISEX', 109990, true),
+
+  ('d0000000-0000-0000-0000-000000000020', 'b0000000-0000-0000-0000-000000000004',
+   'c0000000-0000-0000-0000-000000000006', 'Riñonera Running',
+   'Riñonera elástica para correr, con lugar para el celular.', 'UNISEX', 24990, true),
+
+  ('d0000000-0000-0000-0000-000000000021', 'b0000000-0000-0000-0000-000000000001',
+   'c0000000-0000-0000-0000-000000000007', 'Casco Urbano',
+   'Casco urbano con luz trasera integrada.', 'UNISEX', 54990, true),
+
+  ('d0000000-0000-0000-0000-000000000022', 'b0000000-0000-0000-0000-000000000002',
+   'c0000000-0000-0000-0000-000000000003', 'Guantes de Invierno',
+   'Guantes impermeables con forro polar. Dado de baja: sirve para probar que un producto inactivo no aparece.', 'UNISEX', 29990, false)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO variantes_producto (id, producto_id, sku, talla, color, stock, stock_reservado, precio_adicional, controla_stock) VALUES
+  ('e0000000-0000-0000-0000-000000000013', 'd0000000-0000-0000-0000-000000000008', 'CPLU-M-XS-NEG', 'XS', 'Negro', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000014', 'd0000000-0000-0000-0000-000000000008', 'CPLU-M-S-NEG', 'S', 'Negro', 5, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000015', 'd0000000-0000-0000-0000-000000000008', 'CPLU-M-M-BOR', 'M', 'Bordó', 0, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000016', 'd0000000-0000-0000-0000-000000000008', 'CPLU-M-L-BOR', 'L', 'Bordó', 2, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000017', 'd0000000-0000-0000-0000-000000000009', 'PTRK-H-S-GRI', 'S', 'Gris', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000018', 'd0000000-0000-0000-0000-000000000009', 'PTRK-H-M-GRI', 'M', 'Gris', 6, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000019', 'd0000000-0000-0000-0000-000000000009', 'PTRK-H-L-VER', 'L', 'Verde', 5, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000020', 'd0000000-0000-0000-0000-000000000009', 'PTRK-H-XL-VER', 'XL', 'Verde', 2, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000021', 'd0000000-0000-0000-0000-000000000010', 'RTER-S-NEG', 'S', 'Negro', 10, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000022', 'd0000000-0000-0000-0000-000000000010', 'RTER-M-NEG', 'M', 'Negro', 10, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000023', 'd0000000-0000-0000-0000-000000000010', 'RTER-L-AZU', 'L', 'Azul', 8, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000024', 'd0000000-0000-0000-0000-000000000011', 'ZTRL-M-36-VIO', '36', 'Violeta', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000025', 'd0000000-0000-0000-0000-000000000011', 'ZTRL-M-37-VIO', '37', 'Violeta', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000026', 'd0000000-0000-0000-0000-000000000011', 'ZTRL-M-38-GRI', '38', 'Gris', 0, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000027', 'd0000000-0000-0000-0000-000000000011', 'ZTRL-M-39-GRI', '39', 'Gris', 2, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000028', 'd0000000-0000-0000-0000-000000000012', 'ZURB-39-BLA', '39', 'Blanco', 5, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000029', 'd0000000-0000-0000-0000-000000000012', 'ZURB-41-BLA', '41', 'Blanco', 5, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000030', 'd0000000-0000-0000-0000-000000000012', 'ZURB-43-NEG', '43', 'Negro', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000031', 'd0000000-0000-0000-0000-000000000012', 'ZURB-45-NEG', '45', 'Negro', 1, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000032', 'd0000000-0000-0000-0000-000000000013', 'BPOL-N-8-ROJ', '8', 'Rojo', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000033', 'd0000000-0000-0000-0000-000000000013', 'BPOL-N-10-ROJ', '10', 'Rojo', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000034', 'd0000000-0000-0000-0000-000000000013', 'BPOL-N-12-AZU', '12', 'Azul', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000035', 'd0000000-0000-0000-0000-000000000014', 'CROM-S-AMA', 'S', 'Amarillo', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000036', 'd0000000-0000-0000-0000-000000000014', 'CROM-M-AMA', 'M', 'Amarillo', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000037', 'd0000000-0000-0000-0000-000000000014', 'CROM-L-NEG', 'L', 'Negro', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000038', 'd0000000-0000-0000-0000-000000000015', 'BURB28-S-AZU', 'S', 'Azul', 2, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000039', 'd0000000-0000-0000-0000-000000000015', 'BURB28-L-AZU', 'L', 'Azul', 1, 0, 25000, true),
+  ('e0000000-0000-0000-0000-000000000040', 'd0000000-0000-0000-0000-000000000016', 'BINF20-UNI-ROJ', 'Único', 'Rojo', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000041', 'd0000000-0000-0000-0000-000000000017', 'CARP-4P-UNI-NAR', 'Único', 'Naranja', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000042', 'd0000000-0000-0000-0000-000000000018', 'BDOR-5-UNI-AZU', 'Único', 'Azul', 6, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000043', 'd0000000-0000-0000-0000-000000000019', 'MATQ30-UNI-NEG', 'Único', 'Negro', 5, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000044', 'd0000000-0000-0000-0000-000000000019', 'MATQ30-UNI-ROJ', 'Único', 'Rojo', 0, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000045', 'd0000000-0000-0000-0000-000000000020', 'RINO-RUN-UNI-NEG', 'Único', 'Negro', 12, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000046', 'd0000000-0000-0000-0000-000000000021', 'CURB-S-BLA', 'S', 'Blanco', 3, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000047', 'd0000000-0000-0000-0000-000000000021', 'CURB-M-BLA', 'M', 'Blanco', 4, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000048', 'd0000000-0000-0000-0000-000000000021', 'CURB-L-NEG', 'L', 'Negro', 2, 0, 0, true),
+  ('e0000000-0000-0000-0000-000000000049', 'd0000000-0000-0000-0000-000000000022', 'GINV-S-NEG', 'S', 'Negro', 5, 0, 0, true)
+ON CONFLICT (id) DO UPDATE SET controla_stock = EXCLUDED.controla_stock, stock = EXCLUDED.stock;
+
 -- ---------- ALQUILER DE INVIERNO ----------
 INSERT INTO tipos_equipo_alquiler (id, nombre) VALUES
   ('f0000000-0000-0000-0000-000000000001', 'Esquís'),

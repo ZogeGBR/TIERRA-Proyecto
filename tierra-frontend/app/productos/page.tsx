@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { CatalogoLayout } from "@/components/catalogo/CatalogoLayout";
 import { FiltrosActivos } from "@/components/catalogo/FiltrosActivos";
 import { Paginacion } from "@/components/catalogo/Paginacion";
-import { api, USAR_CATALOGO_DE_PRUEBA } from "@/lib/api";
+import { api } from "@/lib/api";
 import { filtrosDeLaUrl, urlDeFiltros } from "@/lib/catalogo";
 
 export const metadata: Metadata = {
@@ -26,13 +26,14 @@ export default async function CatalogoPage({
 }) {
   const filtros = filtrosDeLaUrl(await searchParams);
 
-  // allSettled y no all: si las categorías o las marcas fallan, el catálogo
-  // se sigue mostrando (solo sin esas listas en el panel); recién si falla el
-  // listado de productos hay un error que mostrar.
-  const [productos, categorias, marcas] = await Promise.allSettled([
+  // allSettled y no all: si categorías, marcas o talles y colores fallan, el
+  // catálogo se sigue mostrando (solo sin esas opciones en el panel); recién
+  // si falla el listado de productos hay un error que mostrar.
+  const [productos, categorias, marcas, opciones] = await Promise.allSettled([
     api.productos.listar(filtros),
     api.categorias.listar(),
-    api.marcas.listar()
+    api.marcas.listar(),
+    api.productos.opcionesDeFiltro()
   ]);
 
   // Una página que no existe (?pagina=99, o un filtro nuevo que dejó menos
@@ -44,6 +45,8 @@ export default async function CatalogoPage({
 
   const listaCategorias = categorias.status === "fulfilled" ? categorias.value : [];
   const listaMarcas = marcas.status === "fulfilled" ? marcas.value : [];
+  const talles = opciones.status === "fulfilled" ? opciones.value.talles : [];
+  const colores = opciones.status === "fulfilled" ? opciones.value.colores : [];
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -54,21 +57,12 @@ export default async function CatalogoPage({
         className="mb-6 font-serif text-2xl font-semibold text-tierra-terracota-oscuro md:text-3xl"
       />
 
-      {USAR_CATALOGO_DE_PRUEBA && (
-        <div
-          role="note"
-          className="mb-6 rounded-xl border border-tierra-ambar/40 bg-tierra-ambar/10 px-4 py-3 text-sm text-tierra-terracota-oscuro"
-        >
-          <strong>Catálogo de prueba.</strong> Estos productos son simulados para desarrollar el buscador y los
-          filtros. Solo los 7 del seed abren su detalle real; en los demás se puede probar la pantalla, pero no
-          comprarlos. Para desactivarlo: <code>NEXT_PUBLIC_CATALOGO_DE_PRUEBA=0</code>.
-        </div>
-      )}
-
       <CatalogoLayout
         filtros={filtros}
         categorias={listaCategorias}
         marcas={listaMarcas}
+        talles={talles}
+        colores={colores}
         total={productos.status === "fulfilled" ? productos.value.totalElementos : null}
       >
         <FiltrosActivos filtros={filtros} categorias={listaCategorias} marcas={listaMarcas} />

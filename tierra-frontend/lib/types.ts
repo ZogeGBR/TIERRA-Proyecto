@@ -18,8 +18,9 @@ export interface VarianteProducto {
   sku: string;
   talla: string | null;
   color: string | null;
-  stock: number;
+  stock: number; // unidades disponibles
   controlaStock?: boolean;
+  precio: number; // el de esta variante (producto + adicional): lo que se cobra
 }
 
 export interface ProductoDetalle {
@@ -218,12 +219,8 @@ export interface ItemCarrito {
 
 // --- Catálogo: búsqueda, filtros y paginación ---
 //
-// Estos tipos son el CONTRATO que el backend tiene que cumplir para GET
-// /api/productos (tarea 6 de la Fase 2). Hoy el backend no lo cumple: devuelve
-// una lista vacía si no se le pasa categoriaId o marcaId, y no sabe de texto,
-// precio, género, orden ni páginas. La implementación de referencia
-// (ejecutable) está en lib/catalogoDePrueba.ts; el contrato definitivo se
-// documenta en docs/contratos-fase2.md con la tarea 6.
+// Contrato de GET /api/productos (tarea 6 de la Fase 2), documentado en
+// docs/contratos-fase2.md.
 
 // Mismos valores que el enum GeneroProducto del backend.
 export type GeneroProducto = "HOMBRE" | "MUJER" | "UNISEX" | "NINO";
@@ -237,6 +234,8 @@ export interface FiltrosDeCatalogo {
   genero?: GeneroProducto;
   precioMin?: number; // inclusive, en pesos
   precioMax?: number; // inclusive, en pesos
+  talle?: string; // con stock; si también hay color, en la misma variante
+  color?: string;
   orden: OrdenCatalogo;
   pagina: number; // desde 1
 }
@@ -259,6 +258,12 @@ export interface OpcionCategoria {
   nombre: string;
   slug: string;
   categoriaPadreId: string | null;
+}
+
+// GET /api/productos/filtros: talles y colores con stock, ya ordenados.
+export interface OpcionesDeFiltro {
+  talles: string[];
+  colores: string[];
 }
 
 export interface OpcionMarca {

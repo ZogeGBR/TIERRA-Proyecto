@@ -23,13 +23,13 @@ El diseño viene de la rama `Zoe-Frontend` y se integra por etapas, cada una ata
 
 | Etapa | Qué entra | Depende de |
 |---|---|---|
-| 0 | Diseño completo, home, catálogo, detalle, carrito, `/login`, `/equipo`, alquiler, Sobre Tierra, páginas de vuelta de Mercado Pago | Lo que ya existe |
-| 1 | Catálogo con búsqueda, filtros, orden y paginación contra el backend real | Tarea 6 |
+| 0 ✅ | Diseño completo, home, catálogo, detalle, carrito, `/login`, `/equipo`, alquiler, Sobre Tierra, páginas de vuelta de Mercado Pago | Lo que ya existe |
+| 1 ✅ | Catálogo con búsqueda, filtros (categoría con subcategorías, marca, género, talle, color, precio), orden y paginación contra el backend real | Tarea 6 |
 | 2 | Checkout sin cuenta, cotización de envío y datos guardados | Tareas 9, 10 y 22 |
 | 3 | "Mis pedidos" (`/cuenta/pedidos`) | Tarea 19 |
 | 4 | Estimador de alquiler con los tipos y precios reales | Tarea 20 |
 
-Mientras un endpoint no existe, la pantalla que lo usa lo dice ("todavía no está disponible") en vez de romperse. Hasta la etapa 1, el catálogo filtra solo por categoría o marca: sin filtro, o con una categoría padre como "Ropa", no muestra productos.
+Mientras un endpoint no existe, la pantalla que lo usa lo dice ("todavía no está disponible") en vez de romperse.
 
 ## Pruebas
 
@@ -38,10 +38,6 @@ Mientras un endpoint no existe, la pantalla que lo usa lo dice ("todavía no est
 | `npm test` | Pruebas de la lógica pura: acceso por código, destinos seguros, validaciones, cobertura, pago pendiente, alquiler, rankings |
 | `npm run lint` | ESLint con la configuración de Next |
 | `npm run build` | Compila para producción; tiene que terminar sin errores |
-
-## Catálogo de prueba
-
-`lib/catalogoDePrueba.ts` tiene productos inventados para trabajar en el buscador y los filtros sin backend. Está **apagado** salvo `NEXT_PUBLIC_CATALOGO_DE_PRUEBA=1`; con el backend real tiene que quedar en `0`. Cuando está encendido, el catálogo muestra un aviso.
 
 ## Notas de diseño
 

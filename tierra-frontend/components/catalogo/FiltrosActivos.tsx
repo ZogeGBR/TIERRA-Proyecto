@@ -42,6 +42,8 @@ export function FiltrosActivos({
           : `Hasta ${formatearPrecio(filtros.precioMax as number)}`;
     chips.push({ clave: "precio", etiqueta, href: sin({ precioMin: undefined, precioMax: undefined }) });
   }
+  if (filtros.talle) chips.push({ clave: "talle", etiqueta: `Talle ${filtros.talle}`, href: sin({ talle: undefined }) });
+  if (filtros.color) chips.push({ clave: "color", etiqueta: filtros.color, href: sin({ color: undefined }) });
 
   if (chips.length === 0) return null;
 

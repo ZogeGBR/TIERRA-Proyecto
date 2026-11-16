@@ -23,6 +23,44 @@ function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) 
   );
 }
 
+// Una opción por botón, más "Todos" para quitar el filtro. Mismo estilo que
+// el filtro "Para" (género). Talle y color salen de GET /api/productos/filtros:
+// solo los que tienen stock, así ninguno lleva a una lista vacía por sí solo.
+function Pastillas({
+  opciones,
+  elegida,
+  etiquetaTodas,
+  alElegir
+}: {
+  opciones: string[];
+  elegida: string | undefined;
+  etiquetaTodas: string;
+  alElegir: (valor: string | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {[undefined, ...opciones].map((valor) => {
+        const activo = elegida === valor;
+        return (
+          <button
+            key={valor ?? "__todos"}
+            type="button"
+            aria-pressed={activo}
+            onClick={() => alElegir(valor)}
+            className={`rounded-full border px-3 py-1 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-tierra-verde/60 ${
+              activo
+                ? "border-tierra-terracota bg-tierra-terracota text-white"
+                : "border-tierra-crema-oscuro text-tierra-terracota-oscuro hover:bg-tierra-crema"
+            }`}
+          >
+            {valor ?? etiquetaTodas}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Panel de filtros + barra de resultados del catálogo.
 //
 // La URL es la fuente de verdad: este componente no guarda "qué filtros hay",
@@ -37,12 +75,16 @@ export function CatalogoLayout({
   filtros,
   categorias,
   marcas,
+  talles,
+  colores,
   total,
   children
 }: {
   filtros: FiltrosDeCatalogo;
   categorias: OpcionCategoria[];
   marcas: OpcionMarca[];
+  talles: string[];
+  colores: string[];
   total: number | null;
   children: ReactNode;
 }) {
@@ -211,6 +253,28 @@ export function CatalogoLayout({
               })}
             </div>
           </Seccion>
+
+          {talles.length > 0 && (
+            <Seccion titulo="Talle">
+              <Pastillas
+                opciones={talles}
+                elegida={filtros.talle}
+                etiquetaTodas="Todos"
+                alElegir={(talle) => aplicar({ talle })}
+              />
+            </Seccion>
+          )}
+
+          {colores.length > 0 && (
+            <Seccion titulo="Color">
+              <Pastillas
+                opciones={colores}
+                elegida={filtros.color}
+                etiquetaTodas="Todos"
+                alElegir={(color) => aplicar({ color })}
+              />
+            </Seccion>
+          )}
 
           <Seccion titulo="Precio">
             <form onSubmit={alAplicarPrecio} className="space-y-2">

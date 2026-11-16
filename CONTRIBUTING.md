@@ -18,7 +18,7 @@ Este documento explica cómo está organizado el repositorio, qué cambió en la
 | Wrapper de Maven (`mvnw`) | Ya no hace falta tener Maven instalado. |
 | `docs/decisiones/` | Las decisiones de diseño que afectan a todo el equipo quedan escritas, con su motivo, en vez de vivir en un chat. |
 
-> **Nota temporal:** la rama `TIERRA-V1` sigue existiendo hasta que todo el equipo confirme que no tiene trabajo local apoyado en ella. Está **congelada**: `main` es la rama viva. No commitees sobre `TIERRA-V1`.
+> **Ramas históricas:** `TIERRA-V1`, `TIERRA-V2` y `TIERRA-V3` están **congeladas**. Quedan como registro de versiones anteriores del proyecto: no se commitea sobre ellas ni se parte de ellas. Las ramas vivas son `main` y `develop` (§4.1).
 
 > **Actualización del flujo:** la Fase 0 dejó a `main` como única rama de trabajo. Con el equipo ya trabajando en paralelo se sumó `develop` como rama de integración, con releases etiquetados y ramas `hotfix/`. El detalle está en la §4.
 
@@ -136,6 +136,7 @@ TIERRA-Proyecto/
 │
 ├── docs/
 │   ├── decisiones/        # Decisiones de arquitectura (ADR, §10)
+│   ├── contratos-fase2.md # Contrato de cada endpoint de la Fase 2 con el frontend
 │   ├── guia-ramas/        # Guía visual de ramas y commits
 │   └── ENTREGA-FASE-1.md  # Qué se hizo en la Fase 1
 ├── .github/CODEOWNERS     # Responsables de revisión por carpeta (§4.7)
@@ -506,7 +507,7 @@ En `tierra-backend/` hay scripts que comprueban el comportamiento de la API cont
 | `probar-auth.ps1` | El login del equipo con contraseña: login y logout, el mismo mensaje para cualquier credencial incorrecta, bloqueo por intentos, CSRF y exención del webhook |
 | `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador, con el cliente entrando por código y el equipo por contraseña |
 | `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío. Con la tarea 9 (checkout sin cuenta) se reemplaza por `probar-checkout.ps1` |
-| `probar-catalogo.ps1` | Los endpoints de categorías y marcas, comparando la respuesta con lo que hay en la base |
+| `probar-catalogo.ps1` | El catálogo comparado con lo que hay en la base: categorías y marcas, y la búsqueda de productos (paginación, orden, subcategorías, texto sin tildes, talle y color con stock, filtros combinados, parámetros inválidos y precio por variante) |
 | `probar-webhook.ps1` | La notificación de pago de Mercado Pago: rechaza una firma falsa, concilia un pago de prueba y no lo procesa dos veces. Recibe el número de operación de un pago hecho con credenciales de prueba (`-PagoId`) |
 
 `probar-comun.ps1` no se ejecuta solo: tiene las funciones que comparten los demás. Los scripts leen la base a través del contenedor `tierra-postgres`, así que Docker tiene que estar corriendo.
@@ -523,7 +524,7 @@ Si Windows se niega a ejecutarlos con *"no está firmado digitalmente"*, ver §2
 Invoke-RestMethod "http://localhost:8080/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001"
 ```
 
-Tiene que devolver la bicicleta de prueba. Y `http://localhost:3000` tiene que abrir el sitio.
+Tiene que devolver una página con la bicicleta de prueba (`/api/productos` sin parámetros devuelve todo el catálogo; el contrato está en `docs/contratos-fase2.md`). Y `http://localhost:3000` tiene que abrir el sitio.
 
 > Usá `Invoke-RestMethod` y no `curl`: en PowerShell, `curl` es un alias de `Invoke-WebRequest`, que parsea la respuesta como HTML y te pide confirmación por seguridad.
 
@@ -590,10 +591,6 @@ Usá `.\mvnw`, no `mvn`. El proyecto trae el wrapper justamente para no depender
 ### Errores rojos en VS Code después de un pull que renombró carpetas
 
 `Ctrl+Shift+P` → *Java: Clean Java Language Server Workspace* → **Restart and delete**. Tarda un par de minutos en reindexar.
-
-### El backend arranca pero `/api/productos` devuelve lista vacía
-
-Es el comportamiento actual: sin `categoriaId` ni `marcaId`, el endpoint devuelve una lista vacía a propósito. Probá con `?categoriaId=c0000000-0000-0000-0000-000000000001` (§6.6). El listado general con filtros y paginación llega con la tarea 6 de la Fase 2.
 
 ### El backend no arranca: falla `R__seed_dev.sql` con `violates check constraint`
 

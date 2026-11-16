@@ -17,6 +17,11 @@ spring:
     baseline-on-migrate: true
 
   jpa:
+    # Sin open-in-view: la conexión a la base se libera al terminar el
+    # servicio, no al terminar de escribir la respuesta. Así una consulta
+    # perezosa fuera de una transacción falla enseguida (LazyInitialization)
+    # en vez de ejecutarse escondida desde el controller o la serialización.
+    open-in-view: false
     hibernate:
       # Las tablas las crea Flyway (ver db/migration). 'validate' hace que la
       # aplicación no arranque si las entidades no coinciden con el esquema:

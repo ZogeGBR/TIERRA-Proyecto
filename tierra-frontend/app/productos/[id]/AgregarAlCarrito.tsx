@@ -6,10 +6,24 @@ import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import type { ProductoDetalle } from "@/lib/types";
 
+const tieneStock = (v: ProductoDetalle["variantes"][number]) => v.controlaStock === false || v.stock > 0;
+
+// El precio de una variante puede ser mayor que el del producto (por ejemplo,
+// un talle más grande). El carrito guarda el de la variante, que es el que
+// cobra el backend: con el del producto, el total del carrito no coincidiría
+// con el del pedido.
+function precioDe(producto: ProductoDetalle, v: ProductoDetalle["variantes"][number] | undefined): number {
+  return typeof v?.precio === "number" ? v.precio : producto.precio;
+}
+
+const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+
 export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
   const { agregarItem } = useCart();
   const router = useRouter();
-  const [varianteId, setVarianteId] = useState(producto.variantes[0]?.id ?? "");
+  // Arranca en la primera variante con stock: la primera de la lista puede
+  // estar agotada, y el select no la deja elegir.
+  const [varianteId, setVarianteId] = useState((producto.variantes.find(tieneStock) ?? producto.variantes[0])?.id ?? "");
   const [cantidad, setCantidad] = useState(1);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
@@ -29,7 +43,7 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
       nombreProducto: producto.nombre,
       talla: variante.talla,
       color: variante.color,
-      precioUnitario: producto.precio,
+      precioUnitario: precioDe(producto, variante),
       cantidad,
       imagen: producto.imagenes[0] ?? null
     });
@@ -50,14 +64,21 @@ export function AgregarAlCarrito({ producto }: { producto: ProductoDetalle }) {
         className="border border-tierra-crema-oscuro rounded px-3 py-2 w-full transition-colors focus:outline-none focus:border-tierra-verde focus:ring-1 focus:ring-tierra-verde"
       >
         {producto.variantes.map((v) => {
-          const sinStock = v.controlaStock !== false && v.stock === 0;
+          const sinStock = !tieneStock(v);
+          const adicional = precioDe(producto, v) - producto.precio;
           return (
             <option key={v.id} value={v.id} disabled={sinStock}>
-              {[v.talla, v.color].filter(Boolean).join(" / ") || v.sku} {sinStock ? "(sin stock)" : ""}
+              {[v.talla, v.color].filter(Boolean).join(" / ") || v.sku}
+              {adicional > 0 ? ` (+${pesos(adicional)})` : ""} {sinStock ? "(sin stock)" : ""}
             </option>
           );
         })}
       </select>
+      {variante && precioDe(producto, variante) !== producto.precio && (
+        <p className="mt-2 text-sm text-tierra-terracota-oscuro">
+          Precio de esta opción: <strong>{pesos(precioDe(producto, variante))}</strong>
+        </p>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
         <input

@@ -39,6 +39,19 @@ Mientras un endpoint no existe, la pantalla que lo usa lo dice ("todavía no est
 | `npm run lint` | ESLint con la configuración de Next |
 | `npm run build` | Compila para producción; tiene que terminar sin errores |
 
+## Dependencias y `npm audit`
+
+Las versiones van fijas en `package.json` (sin `^`), así cada instalación es igual. Para actualizar, se cambia la versión a mano en un PR propio y se corre la verificación completa. **No uses `npm audit fix --force`**: instala versiones fuera de las fijadas, incluso de otra versión mayor, sin revisión.
+
+`npm audit` reporta hoy 8 avisos (1 alto y 7 moderados) que no tienen arreglo sin cambiar de versión mayor, y que no afectan al sitio:
+
+| Paquete | Por qué no afecta | Cuándo se va |
+|---|---|---|
+| `postcss` 8.4.31, el que trae Next adentro (alto) | Next lo usa al compilar, sobre nuestro propio CSS. Las fallas necesitan un CSS malicioso | Con Next 16 |
+| `minimatch` vía `@typescript-eslint` (moderado, 7 avisos encadenados) | Solo lo usa ESLint en la máquina de quien desarrolla, sobre nuestros archivos | Cuando `@typescript-eslint` publique una versión que lo actualice |
+
+Si aparece un aviso nuevo, sobre todo de `next`, se revisa enseguida: Next corre en el servidor.
+
 ## Notas de diseño
 
 - **Animaciones:** `app/template.tsx` (fundido por pantalla y tema por ruta: invierno en alquiler), `.grilla-anim` (escalonado), `components/Nieve.tsx`.

@@ -41,8 +41,8 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.getMessage(), EmailDelEquipoException.CODIGO));
     }
 
-    // CheckoutService ya canceló el pedido y registró la causa en el log. El
-    // detalle técnico de Mercado Pago no va en la respuesta.
+    // La causa ya quedó en el log (PagoService y CheckoutService). El detalle
+    // técnico de Mercado Pago no va en la respuesta.
     @ExceptionHandler(LinkDePagoNoDisponibleException.class)
     public ResponseEntity<ErrorResponse> handleLinkDePagoNoDisponible(LinkDePagoNoDisponibleException ex) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)

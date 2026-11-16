@@ -141,6 +141,8 @@ public class SecurityConfig {
                     // La cuenta del cliente: datos guardados para la próxima
                     // compra (tarea 22). Solo clientes: el equipo no compra.
                     .requestMatchers("/api/cuenta/**").hasRole("CLIENTE")
+                    // "Mis pedidos" (tarea 19): los del cliente de la sesión.
+                    .requestMatchers(HttpMethod.GET, "/api/pedidos/mios").hasRole("CLIENTE")
 
                     // --- Panel de administración (fase 3) ---
                     // Todavía no existe ningún endpoint bajo /api/admin. La

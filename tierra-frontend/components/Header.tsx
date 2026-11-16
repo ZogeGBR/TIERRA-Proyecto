@@ -104,9 +104,7 @@ export function Header() {
             ["/productos", "Catálogo"],
             ["/alquiler", "Alquiler"],
             ["/sobre-tierra", "Sobre Tierra"],
-            // "Mis pedidos" (/cuenta/pedidos) vuelve con la tarea 19, cuando
-            // exista GET /api/pedidos/mios. Hoy esa ruta responde 401 y la
-            // pantalla rebotaría entre /login y /cuenta/pedidos.
+            ["/cuenta/pedidos", "Mis pedidos"],
             ["#contacto", "Contacto"],
           ].map(([href, texto]) => (
             <Link key={href} href={href} onClick={() => setMenuMovil(false)} className="py-3 border-b border-tierra-crema-oscuro last:border-0">

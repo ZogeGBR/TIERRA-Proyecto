@@ -22,6 +22,7 @@ import com.tierra.ecommerce.entity.ReservaStock;
 import com.tierra.ecommerce.enums.EstadoPago;
 import com.tierra.ecommerce.enums.EstadoPedido;
 import com.tierra.ecommerce.enums.MetodoPago;
+import com.tierra.ecommerce.exception.LinkDePagoNoDisponibleException;
 import com.tierra.ecommerce.exception.PagoNoPermitidoException;
 import com.tierra.ecommerce.exception.RecursoNoEncontradoException;
 import com.tierra.ecommerce.repository.PagoRepository;
@@ -186,7 +187,10 @@ public class PagoService {
 
         } catch (MPApiException | MPException e) {
             log.error("No se pudo crear la preferencia de pago para el pedido {}: {}", pedidoId, detalleMp(e), e);
-            throw new IllegalStateException("No se pudo generar el link de pago. Intentá de nuevo.", e);
+            // 503 con su código, no un 500: el pedido sigue pendiente y se
+            // puede reintentar ("Pagar" en Mis pedidos). En el checkout, además,
+            // CheckoutService cancela el pedido.
+            throw new LinkDePagoNoDisponibleException(e);
         }
     }
 

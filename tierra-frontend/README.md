@@ -26,7 +26,7 @@ El diseño viene de la rama `Zoe-Frontend` y se integra por etapas, cada una ata
 | 0 ✅ | Diseño completo, home, catálogo, detalle, carrito, `/login`, `/equipo`, alquiler, Sobre Tierra, páginas de vuelta de Mercado Pago | Lo que ya existe |
 | 1 ✅ | Catálogo con búsqueda, filtros (categoría con subcategorías, marca, género, talle, color, precio), orden y paginación contra el backend real | Tarea 6 |
 | 2 | Checkout sin cuenta, cotización de envío y datos guardados para la próxima compra ✅ | Tareas 9, 10 y 22 ✅ |
-| 3 | "Mis pedidos" (`/cuenta/pedidos`) | Tarea 19 |
+| 3 | "Mis pedidos" (`/cuenta/pedidos`) ✅ | Tarea 19 ✅ |
 | 4 | Estimador de alquiler con los tipos y precios reales | Tarea 20 |
 
 Mientras un endpoint no existe, la pantalla que lo usa lo dice ("todavía no está disponible") en vez de romperse.

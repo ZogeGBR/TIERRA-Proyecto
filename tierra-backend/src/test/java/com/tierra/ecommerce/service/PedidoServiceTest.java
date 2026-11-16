@@ -56,6 +56,8 @@ class PedidoServiceTest {
         variante.setId(UUID.randomUUID());
         variante.setProducto(producto);
         variante.setPrecioAdicional(BigDecimal.valueOf(2000));
+        variante.setTalla("M");
+        variante.setColor("Azul");
         items = List.of(new ItemPedidoRequest(variante.getId(), 2));
 
         direccion = new DireccionEntrega("Av. San Martín", "123", "2", "B", "Esquel", "Chubut", "9200");
@@ -177,5 +179,18 @@ class PedidoServiceTest {
         assertEquals(EstadoPedido.PAGADO, pedido.getEstado());
         verifyNoInteractions(inventarioService);
         verify(pedidoRepository, never()).save(any());
+    }
+
+    // V12: cada ítem guarda lo que se compró, no solo un puntero al producto.
+    @Test
+    void cadaItemGuardaUnaCopiaDelNombreTalleYColor() {
+        pedidoService.crearPedido(cliente, conRetiro());
+
+        org.mockito.ArgumentCaptor<PedidoItem> item = org.mockito.ArgumentCaptor.forClass(PedidoItem.class);
+        verify(pedidoItemRepository).save(item.capture());
+        assertEquals("Carpa", item.getValue().getNombreProducto());
+        assertEquals("M", item.getValue().getTalla());
+        assertEquals("Azul", item.getValue().getColor());
+        assertEquals(0, new BigDecimal("52000").compareTo(item.getValue().getPrecioUnitario()));
     }
 }

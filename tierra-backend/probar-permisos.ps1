@@ -28,6 +28,7 @@ Write-Host " Comprar no exige cuenta (decision 0005):"
 VerificarCompra (Pedir $s POST "/api/checkout" $compra) "test@tierra.esquel" "POST /api/checkout" | Out-Null
 Write-Host " Lo demas, no:"
 Verificar (Pedir $s GET "/api/cuenta/datos-entrega") 401 "GET /api/cuenta/datos-entrega"
+Verificar (Pedir $s GET "/api/pedidos/mios") 401 "GET /api/pedidos/mios"
 Verificar (Pedir $s GET "/api/admin/sesion") 401 "GET /api/admin/sesion"
 Verificar (Pedir $s GET "/api/auth/yo") 401 "GET /api/auth/yo"
 Write-Host " El webhook de Mercado Pago sigue accesible:"
@@ -38,8 +39,9 @@ $s = NuevaSesion
 Verificar (EntrarComoCliente $s "test@tierra.esquel") 200 "entrar con codigo"
 Verificar (Pedir $s GET "/api/auth/yo") 200 "GET /api/auth/yo"
 VerificarCompra (Pedir $s POST "/api/checkout" $compra) "test@tierra.esquel" "POST /api/checkout" | Out-Null
-Write-Host " Ve sus datos guardados:"
+Write-Host " Ve sus datos guardados y sus pedidos:"
 Verificar (Pedir $s GET "/api/cuenta/datos-entrega") 200 "GET /api/cuenta/datos-entrega"
+Verificar (Pedir $s GET "/api/pedidos/mios") 200 "GET /api/pedidos/mios"
 Write-Host " Un cliente NO entra al panel:"
 Verificar (Pedir $s GET "/api/admin/sesion") 403 "GET /api/admin/sesion"
 Verificar (Pedir $s GET "/api/admin/reportes/verificacion") 403 "GET /api/admin/reportes/verificacion"
@@ -53,6 +55,7 @@ Write-Host " Pero NO a los reportes economicos (esto prueba que @PreAuthorize es
 Verificar (Pedir $s GET "/api/admin/reportes/verificacion") 403 "GET /api/admin/reportes/verificacion"
 Write-Host " La cuenta de cliente no es para el equipo:"
 Verificar (Pedir $s GET "/api/cuenta/datos-entrega") 403 "GET /api/cuenta/datos-entrega"
+Verificar (Pedir $s GET "/api/pedidos/mios") 403 "GET /api/pedidos/mios"
 
 Write-Host "`n=== COMO ADMINISTRADOR (entra con contrasena) ===" -ForegroundColor Cyan
 $s = NuevaSesion

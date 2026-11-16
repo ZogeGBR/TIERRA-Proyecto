@@ -10,7 +10,7 @@ import {
 } from "../lib/pedidoPendiente";
 import { obtenerLinkDePago } from "../lib/iniciarPago";
 import { diasDeAlquiler, estimarPrecio, enlaceWhatsapp, armarMensajeConsulta } from "../lib/alquiler";
-import { etiquetaDeEstado, tonoDeEstado, sePuedePagar } from "../lib/pedidos";
+import { etiquetaDeEstado, tonoDeEstado, sePuedePagar, textoDeDireccion, fechaLarga } from "../lib/pedidos";
 import { textoDeError, esEmailNoUsable, esErrorDeRed, esErrorDelServidor } from "../lib/errores";
 import { ApiError, api, NO_DISPONIBLE } from "../lib/api";
 import { filtrosDeLaUrl, queryDeFiltros, cantidadDeFiltros } from "../lib/catalogo";
@@ -315,4 +315,17 @@ test("catálogo: talle y color viajan en la URL y cuentan como filtros", () => {
   assert.equal(queryDeFiltros(g), "");
   // Con tildes: URLSearchParams los codifica, el backend los compara sin tildes.
   assert.equal(queryDeFiltros(filtrosDeLaUrl({ talle: "Único" })), "talle=%C3%9Anico");
+});
+
+test("historial: la dirección con piso y depto opcionales", () => {
+  const base = { calle: "San Martín", numero: "123", ciudad: "Esquel", provincia: "Chubut", codigoPostal: "9200" };
+  assert.equal(textoDeDireccion({ ...base, piso: "2", departamento: "B" }), "San Martín 123, piso 2, depto. B, Esquel, Chubut (9200)");
+  assert.equal(textoDeDireccion(base), "San Martín 123, Esquel, Chubut (9200)");
+  assert.equal(textoDeDireccion({ ...base, numero: null, piso: " ", departamento: null }), "San Martín, Esquel, Chubut (9200)");
+});
+
+test("historial: la fecha del backend, con zona horaria", () => {
+  // El backend manda creadoEn con zona (UTC o -03:00 según el servidor).
+  assert.equal(fechaLarga("2026-11-16T14:04:15.114757Z"), new Date("2026-11-16T14:04:15.114Z").toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }));
+  assert.equal(fechaLarga("no es una fecha"), "");
 });

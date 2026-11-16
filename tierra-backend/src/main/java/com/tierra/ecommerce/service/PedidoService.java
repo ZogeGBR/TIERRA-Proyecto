@@ -93,6 +93,9 @@ public class PedidoService {
             pedidoItem.setVariante(variante);
             pedidoItem.setCantidad(itemReq.cantidad());
             pedidoItem.setPrecioUnitario(precioUnitario);
+            pedidoItem.setNombreProducto(variante.getProducto().getNombre());
+            pedidoItem.setTalla(variante.getTalla());
+            pedidoItem.setColor(variante.getColor());
             pedidoItemRepository.save(pedidoItem);
 
             subtotal = subtotal.add(precioUnitario.multiply(BigDecimal.valueOf(itemReq.cantidad())));

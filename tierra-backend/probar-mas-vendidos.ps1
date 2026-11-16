@@ -9,6 +9,11 @@
 # eso se compara contra la misma regla calculada en SQL. Ademas se insertan
 # ventas controladas con cantidades grandes para los casos puntuales, y al
 # terminar se borran (aunque el script falle a la mitad).
+#
+# Con -DejarVentas quedan las tres ventas que ponen primeros a Z, W y V,
+# para ver el carrusel "Lo que mas se elige" en la home. La proxima corrida
+# sin -DejarVentas las borra al empezar.
+param([switch]$DejarVentas)
 
 . "$PSScriptRoot\probar-comun.ps1"
 $fallas = 0
@@ -41,9 +46,12 @@ for ($i = 0; $i -lt 7; $i++) {
     $partes = "$($filas[$i])".Trim().Split("|")
     $prod[$nombres[$i]] = $partes[0]; $var[$nombres[$i]] = $partes[1]
 }
+# Lo que haya quedado de una corrida con -DejarVentas.
+Sql "DELETE FROM pedidos WHERE usuario_id IN (SELECT id FROM usuarios WHERE email LIKE 'ranking.%@prueba.tierra.esquel'); DELETE FROM usuarios WHERE email LIKE 'ranking.%@prueba.tierra.esquel';" | Out-Null
 $email = "ranking.$sello@prueba.tierra.esquel"
 $cliente = Insertar "INSERT INTO usuarios (nombre, email, rol) VALUES ('Cliente Ranking', '$email', 'CLIENTE') RETURNING id;"
 $creados = @()
+$primeros3 = @()
 function Venta($letra, $estado, $diasAtras, $cantidad) {
     $id = Insertar "INSERT INTO pedidos (usuario_id, estado, tipo_entrega, subtotal, total, contacto_nombre, creado_en) VALUES ('$cliente', '$estado', 'RETIRO_LOCAL', 1, 1, 'Ranking', localtimestamp - interval '$diasAtras days') RETURNING id;"
     Sql "INSERT INTO pedido_items (pedido_id, variante_id, cantidad, precio_unitario, nombre_producto) SELECT '$id', v.id, $cantidad, 1, p.nombre FROM variantes_producto v JOIN productos p ON p.id = v.producto_id WHERE v.id = '$($var[$letra])';" | Out-Null
@@ -52,9 +60,9 @@ function Venta($letra, $estado, $diasAtras, $cantidad) {
 
 try {
     Write-Host "`n1. Ventas controladas" -ForegroundColor Cyan
-    $creados += Venta "Z" "PAGADO" 0 300000
-    $creados += Venta "W" "ENTREGADO" 1 200000
-    $creados += Venta "V" "ENVIADO" 2 100000
+    $primeros3 += Venta "Z" "PAGADO" 0 300000
+    $primeros3 += Venta "W" "ENTREGADO" 1 200000
+    $primeros3 += Venta "V" "ENVIADO" 2 100000
     $creados += Venta "X" "CANCELADO" 0 900000
     $creados += Venta "T" "PENDIENTE" 0 900000
     $creados += Venta "Y" "PAGADO" 100 900000
@@ -94,18 +102,29 @@ try {
 }
 finally {
     Sql "UPDATE productos SET activo = true WHERE id = '$($prod.U)';" | Out-Null
-    if ($creados.Count -gt 0) {
-        Sql "DELETE FROM pedidos WHERE id IN ('$($creados -join "','")');" | Out-Null
+    # Las de X, T, Y y U se borran siempre (U volvio a estar activo y con sus
+    # 800000 unidades quedaria primero). Las de Z, W y V, salvo -DejarVentas.
+    $aBorrar = @($creados)
+    if (-not $DejarVentas) { $aBorrar += $primeros3 }
+    if ($aBorrar.Count -gt 0) {
+        Sql "DELETE FROM pedidos WHERE id IN ('$($aBorrar -join "','")');" | Out-Null
     }
-    Sql "DELETE FROM usuarios WHERE email = '$email';" | Out-Null
+    if (-not $DejarVentas) { Sql "DELETE FROM usuarios WHERE email = '$email';" | Out-Null }
 }
 
-Write-Host "`n4. Despues de borrar las ventas controladas" -ForegroundColor Cyan
-$r = Pedir (NuevaSesion) GET "/api/productos/mas-vendidos"
-$esperado = EsperadoSegunLaBase 8
-$texto = "lista vacia: hay menos de 3 con ventas"
-if ($esperado) { $texto = "$(@($esperado.Split(',')).Count) productos" }
-Condicion ($r.Codigo -eq 200 -and (Ids (Lista $r)) -eq $esperado) "sigue coincidiendo con la base ($texto)"
+if ($DejarVentas) {
+    Write-Host "`n4. Quedaron las ventas de Z, W y V" -ForegroundColor Cyan
+    $r = Pedir (NuevaSesion) GET "/api/productos/mas-vendidos"
+    Condicion ($r.Codigo -eq 200 -and (Ids (Lista $r)) -eq (EsperadoSegunLaBase 8)) "el ranking coincide con la base: abri la home para ver el carrusel"
+    Write-Host "  Para borrarlas, volve a correr el script sin -DejarVentas."
+} else {
+    Write-Host "`n4. Despues de borrar las ventas controladas" -ForegroundColor Cyan
+    $r = Pedir (NuevaSesion) GET "/api/productos/mas-vendidos"
+    $esperado = EsperadoSegunLaBase 8
+    $texto = "lista vacia: hay menos de 3 con ventas"
+    if ($esperado) { $texto = "$(@($esperado.Split(',')).Count) productos" }
+    Condicion ($r.Codigo -eq 200 -and (Ids (Lista $r)) -eq $esperado) "sigue coincidiendo con la base ($texto)"
+}
 Condicion ((Escalar "SELECT activo FROM productos WHERE id = '$($prod.U)';") -eq "t") "U volvio a estar activo"
 
 Resumen

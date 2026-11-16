@@ -14,8 +14,13 @@ $email = "historial.$sello@prueba.tierra.esquel"
 $mochila = "e0000000-0000-0000-0000-000000000005"
 function Escalar($consulta) { return "$(Sql $consulta)".Trim() }
 function Mios($s) { Pedir $s GET "/api/pedidos/mios" }
-# ConvertFrom-Json devuelve un objeto suelto si la lista tiene uno solo.
-function Lista($r) { try { return ,@($r.Texto | ConvertFrom-Json) } catch { return ,@() } }
+# En dos pasos, como ListaDe en probar-catalogo.ps1: Windows PowerShell 5.1
+# entrega el arreglo JSON entero como un solo objeto (PowerShell 7, elemento
+# por elemento). Al pasarlo por el pipeline queda igual en los dos.
+function Lista($r) {
+    try { $json = ConvertFrom-Json $r.Texto } catch { return ,@() }
+    return ,@($json | Where-Object { $null -ne $_ })
+}
 function Comprar($s, $cuerpo) { Pedir $s POST "/api/checkout" $cuerpo }
 $dir = "{""calle"":""San Martin"",""numero"":""123"",""piso"":""2"",""departamento"":""B"",""ciudad"":""Esquel"",""provincia"":""Chubut"",""codigoPostal"":""9200""}"
 function ConEnvio($items) {

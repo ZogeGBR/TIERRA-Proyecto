@@ -28,7 +28,12 @@ function Pedir($s, $metodo, $ruta, $cuerpo) {
     if ($cuerpo) { $p.ContentType = "application/json; charset=utf-8"; $p.Body = $cuerpo }
     try {
         $r = Invoke-WebRequest @p
-        return [pscustomobject]@{ Codigo = [int]$r.StatusCode; Texto = $r.Content }
+        # Se decodifica como UTF-8 a mano: el backend responde JSON sin
+        # charset en el Content-Type, y Windows PowerShell 5.1 lo lee entonces
+        # como ISO-8859-1 ("Unico" con tilde o los puntos del telefono oculto
+        # salen mal). PowerShell 7 ya usa UTF-8; asi quedan iguales.
+        $texto = [System.Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
+        return [pscustomobject]@{ Codigo = [int]$r.StatusCode; Texto = $texto }
     } catch {
         $resp = $_.Exception.Response
         if (-not $resp) { return [pscustomobject]@{ Codigo = 0; Texto = "fallo del cliente: $($_.Exception.Message)" } }

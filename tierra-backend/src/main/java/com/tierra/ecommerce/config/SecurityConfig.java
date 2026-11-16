@@ -19,6 +19,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -87,6 +88,14 @@ public class SecurityConfig {
                     // comportamiento por defecto, explícito para que nadie lo
                     // apague sin saber que apaga la protección contra fijación.
                     .sessionFixation(fixation -> fixation.changeSessionId()))
+
+            // Sin caché de requests. Spring guarda en una sesión cada request
+            // anónimo que termina en 401, para redirigir ahí después de un
+            // login por formulario. Acá no hay login por formulario (la vuelta
+            // la maneja el frontend con ?redirect=), así que nadie lo leía, y
+            // como el frontend pide /api/auth/yo al cargar cada página, todo
+            // visitante anónimo terminaba con una sesión en el servidor.
+            .requestCache(cache -> cache.requestCache(new NullRequestCache()))
 
             .exceptionHandling(ex -> ex
                     // Sin esto Spring devuelve su respuesta por defecto y el

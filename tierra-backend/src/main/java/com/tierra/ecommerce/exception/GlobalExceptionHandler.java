@@ -141,6 +141,15 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("El parámetro '" + ex.getName() + "' no tiene un formato válido"));
     }
 
+    // El correo no pudo cotizar. El detalle técnico queda en el log; la
+    // persona ve un mensaje que le dice qué hacer.
+    @ExceptionHandler(CotizacionNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> handleCotizacionNoDisponible(CotizacionNoDisponibleException ex) {
+        log.warn("No se pudo cotizar el envío: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(CotizacionNoDisponibleException.MENSAJE));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));

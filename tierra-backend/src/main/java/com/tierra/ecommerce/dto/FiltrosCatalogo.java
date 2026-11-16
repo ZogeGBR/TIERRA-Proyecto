@@ -1,12 +1,11 @@
 package com.tierra.ecommerce.dto;
 
 import com.tierra.ecommerce.enums.GeneroProducto;
+import com.tierra.ecommerce.util.Textos;
 
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 // Filtros del catálogo (GET /api/productos), ya validados y normalizados.
@@ -66,8 +65,7 @@ public record FiltrosCatalogo(
     // Sin tildes ni diéresis y en minúscula: "Campéra" encuentra "campera".
     // La consulta aplica lo mismo a las columnas (ver ProductoEspecificaciones).
     public static String normalizar(String texto) {
-        String sinMarcas = Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return sinMarcas.toLowerCase(Locale.ROOT).trim();
+        return Textos.normalizar(texto);
     }
 
     private static String vacioANull(String valor) {

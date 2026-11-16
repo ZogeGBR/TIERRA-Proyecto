@@ -117,6 +117,10 @@ public class SecurityConfig {
                     // existe: los clientes se crean al comprar.
                     .requestMatchers(HttpMethod.POST, "/api/auth/codigo", "/api/auth/codigo/verificar").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/equipo/login").permitAll()
+                    // El costo del envío se muestra antes de pagar, con o sin
+                    // sesión (tarea 10). Solo informa: el que cobra es el alta
+                    // del pedido, que lo vuelve a calcular.
+                    .requestMatchers(HttpMethod.POST, "/api/envios/cotizacion").permitAll()
 
                     // El webhook lo llama Mercado Pago, que no tiene ni puede
                     // tener credenciales nuestras. Su protección es la firma

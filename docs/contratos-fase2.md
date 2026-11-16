@@ -4,7 +4,7 @@ Lo que el backend promete y el frontend usa, endpoint por endpoint. Se completa 
 
 Convenciones para todos los endpoints:
 
-- **Errores:** `{ "mensaje": "...", "timestamp": "..." }`. El `mensaje` está escrito para mostrárselo a la persona.
+- **Errores:** `{ "mensaje": "...", "timestamp": "..." }`. El `mensaje` está escrito para mostrárselo a la persona. Cuando la pantalla tiene que reaccionar distinto según el motivo, viene además `"codigo"` (por ejemplo `"SIN_STOCK"`); si no, el campo no aparece.
 - **400:** un parámetro con formato inválido (un id que no es UUID, un número que no es número, un valor que no existe). Nunca debería llegar un 500 por algo que escribió quien usa la API.
 - **Público:** se puede llamar sin sesión y no abre una.
 
@@ -15,7 +15,7 @@ Convenciones para todos los endpoints:
 | `GET /api/productos` | 6 | ✅ |
 | `GET /api/productos/filtros` | 6 | ✅ |
 | `GET /api/productos/{id}` | 6 | ✅ (agrega el precio por variante) |
-| `POST /api/checkout` | 9 | pendiente |
+| `POST /api/checkout` | 9 | ✅ |
 | `POST /api/envios/cotizacion` | 10 | ✅ |
 | `GET /api/pedidos/mios` | 19 | pendiente |
 | `GET /api/cuenta/datos-entrega` | 22 | pendiente |
@@ -116,6 +116,79 @@ El detalle de un producto activo. Un producto inactivo o inexistente da 404, y u
 
 - `variantes[].precio` es el precio de esa variante: el del producto más el adicional de la variante. Es el mismo cálculo con el que el backend cobra, así que el carrito tiene que guardar este valor y no el `precio` del producto.
 - `variantes[].stock` son las unidades disponibles: stock menos lo reservado. Si `controlaStock` es `false`, la variante siempre está disponible y `stock` no significa nada (viene el entero más grande de Java, 2147483647).
+
+---
+
+## Checkout
+
+### `POST /api/checkout` — público (con token CSRF, como todo POST)
+
+La única forma de crear un pedido (decisión 0005). Se compra **sin cuenta y sin contraseña**, y **nunca abre una sesión**. Crea el pedido, reserva el stock por 20 minutos y devuelve el link de pago de Mercado Pago.
+
+```json
+{
+  "nombre": "Ana Pérez",
+  "email": "ana@example.com",
+  "telefono": "2945 123456",
+  "dni": "30.111.222",
+  "tipoEntrega": "ENVIO_DOMICILIO",
+  "direccion": {
+    "calle": "San Martín", "numero": "123", "piso": "2", "departamento": "B",
+    "ciudad": "Esquel", "provincia": "Chubut", "codigoPostal": "9200"
+  },
+  "items": [{ "varianteId": "e000…0005", "cantidad": 1 }]
+}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `nombre` | Sí | Hasta 150 caracteres. Es el de quien recibe: queda en el pedido |
+| `email` | Sí | Formato válido. Decide a qué cliente va el pedido (ver la tabla de abajo). Se compara sin mayúsculas ni espacios |
+| `telefono` | Sí | Entre 8 y 15 números, con código de área. Se guarda como se escribió |
+| `dni` | Con envío | 7 u 8 números; se guardan solo los números. Con retiro se ignora |
+| `tipoEntrega` | Sí | `ENVIO_DOMICILIO` o `RETIRO_LOCAL` |
+| `direccion` | Con envío | `calle`, `ciudad`, `provincia` y `codigoPostal` (4 números) obligatorios; `numero`, `piso` y `departamento` opcionales. Con retiro se ignora |
+| `items` | Sí | Entre 1 y 50 |
+
+El costo del envío lo calcula el backend con el mismo código que la cotización: el pedido cobra lo que dijo `POST /api/envios/cotizacion`. Los cupones no se aplican hasta la Fase 3.
+
+**A quién va el pedido:**
+
+| Sesión | Email del checkout | Qué pasa |
+|---|---|---|
+| Ninguna | No existe | Se crea el cliente, solo con nombre y email, sin contraseña |
+| Ninguna | Es de un cliente | El pedido se asocia a ese cliente. **Su cuenta no se modifica** |
+| Ninguna | Es del equipo | 409 con `codigo: "EMAIL_DEL_EQUIPO"` |
+| De cliente | Se ignora | El pedido va al cliente de la sesión |
+| Del equipo | Cualquiera | Como si no hubiera sesión |
+
+El teléfono, el DNI y la dirección quedan **en el pedido**, nunca en la cuenta: escribir el email de otra persona no cambia nada de ella ni da acceso a nada. La respuesta es la misma para un email nuevo y uno existente.
+
+Respuesta (201):
+
+```json
+{
+  "pedidoId": "5d48e6a8-…",
+  "total": 101990.00,
+  "initPoint": "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=…",
+  "expiraEn": "2026-11-16T12:20:00Z"
+}
+```
+
+`expiraEn` es cuándo vence el link, antes que la reserva de stock.
+
+Errores:
+
+| Código HTTP | `codigo` | Cuándo |
+|---|---|---|
+| 400 | — | Un campo inválido o faltante, o una provincia fuera de la zona de envío |
+| 404 | — | Una variante que no existe o es de un producto inactivo |
+| 409 | `EMAIL_DEL_EQUIPO` | El email es de una cuenta del equipo: *"No podemos usar ese email para comprar. Usá otro."* |
+| 409 | `SIN_STOCK` | Algún producto no tiene stock suficiente |
+| 503 | `LINK_DE_PAGO_NO_DISPONIBLE` | Mercado Pago no devolvió el link. El pedido ya se canceló y el stock se liberó: *"No pudimos generar el link de pago. No se hizo ningún cobro; probá de nuevo."* |
+| 503 | — | El correo no pudo cotizar el envío (ver Envíos) |
+
+Ningún error deja un pedido pendiente ni stock reservado: los que ocurren antes de crear el pedido no crean nada, y el 503 del link cancela el pedido en el momento.
 
 ---
 

@@ -86,6 +86,10 @@ test("validación del checkout", () => {
   assert.ok(validarEntrega({ ...dom, provincia: "" }, "ENVIO_DOMICILIO").provincia);
   assert.ok(validarEntrega({ ...dom, provincia: "Otra provincia" }, "ENVIO_DOMICILIO").provincia);
   assert.ok(validarEntrega({ ...dom, codigoPostal: "92" }, "ENVIO_DOMICILIO").codigoPostal);
+  // Piso y departamento son opcionales, con el largo máximo del backend.
+  assert.equal(hayErrores(validarEntrega({ ...dom, piso: "12", departamento: "B" }, "ENVIO_DOMICILIO")), false);
+  assert.ok(validarEntrega({ ...dom, piso: "1".repeat(11) }, "ENVIO_DOMICILIO").piso);
+  assert.ok(validarEntrega({ ...dom, departamento: "B".repeat(11) }, "ENVIO_DOMICILIO").departamento);
 });
 
 test("pago pendiente: guardar, leer por firma, vencer, formato inválido", () => {
@@ -95,6 +99,12 @@ test("pago pendiente: guardar, leer por firma, vencer, formato inválido", () =>
   assert.notEqual(f1, firmaDeCompra([{ varianteId: "v1", cantidad: 3 }, items[1]], "RETIRO_LOCAL", null, "ana@mail.com"));
   const dir = { calle: "Fontana", numero: "1", ciudad: "Esquel", provincia: "Chubut", codigoPostal: "9200" };
   assert.notEqual(firmaDeCompra(items, "ENVIO_DOMICILIO", dir, "a@b.com"), firmaDeCompra(items, "ENVIO_DOMICILIO", { ...dir, calle: "Otra" }, "a@b.com"));
+  // Otro piso u otro departamento es otro destino: otra compra.
+  assert.notEqual(firmaDeCompra(items, "ENVIO_DOMICILIO", dir, "a@b.com"), firmaDeCompra(items, "ENVIO_DOMICILIO", { ...dir, piso: "3" }, "a@b.com"));
+  assert.notEqual(
+    firmaDeCompra(items, "ENVIO_DOMICILIO", { ...dir, departamento: "A" }, "a@b.com"),
+    firmaDeCompra(items, "ENVIO_DOMICILIO", { ...dir, departamento: "B" }, "a@b.com")
+  );
 
   const a = almacenFalso();
   const pago = { pedidoId: "p1", initPoint: "https://www.mercadopago.com.ar/x", venceEn: 1000, firma: f1 };
@@ -237,7 +247,7 @@ test("ruta pública inexistente (401 de denyAll) NO se muestra como 'sesión ven
     new Response(JSON.stringify({ mensaje: "Necesitás iniciar sesión para hacer esto" }), { status: 401 })) as typeof fetch;
   try {
     await assert.rejects(
-      api.checkout.confirmar({} as never),
+      api.alquiler.tipos(),
       (e: unknown) => e instanceof ApiError && e.status === 501 && !/sesión/i.test(textoDeError(e, "x"))
     );
   } finally {
@@ -245,10 +255,36 @@ test("ruta pública inexistente (401 de denyAll) NO se muestra como 'sesión ven
   }
 });
 
+// El checkout ya existe: sus errores llegan tal cual, con el código que
+// manda el backend, para que la pantalla reaccione según el motivo.
+test("checkout: los errores del backend llegan con su código", async () => {
+  const original = globalThis.fetch;
+  const responder = (status: number, cuerpo: object) =>
+    (async () => new Response(JSON.stringify(cuerpo), { status })) as typeof fetch;
+  try {
+    globalThis.fetch = responder(409, { mensaje: "No podemos usar ese email para comprar. Usá otro.", codigo: "EMAIL_DEL_EQUIPO" });
+    await assert.rejects(api.checkout.confirmar({} as never), (e: unknown) => esEmailNoUsable(e));
+    globalThis.fetch = responder(409, { mensaje: "Stock insuficiente", codigo: "SIN_STOCK" });
+    await assert.rejects(
+      api.checkout.confirmar({} as never),
+      (e: unknown) => e instanceof ApiError && e.codigo === "SIN_STOCK" && !esEmailNoUsable(e)
+    );
+    globalThis.fetch = responder(503, { mensaje: "No pudimos generar el link de pago. No se hizo ningún cobro; probá de nuevo.", codigo: "LINK_DE_PAGO_NO_DISPONIBLE" });
+    await assert.rejects(
+      api.checkout.confirmar({} as never),
+      (e: unknown) => e instanceof ApiError && /ningún cobro/.test(textoDeError(e, "x"))
+    );
+    // Un 403 (por ejemplo, sin token CSRF) ya no se disfraza de "todavía no disponible".
+    globalThis.fetch = responder(403, { mensaje: "Acceso denegado" });
+    await assert.rejects(api.checkout.confirmar({} as never), (e: unknown) => e instanceof ApiError && e.status === 403);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 // Un endpoint público que el backend todavía no implementa: según la regla de
 // SecurityConfig en la que caiga responde 401 o 404. En un GET los dos se
-// traducen a "todavía no disponible"; en un POST, un 404 es un error real de
-// negocio y su mensaje tiene que llegar.
+// traducen a "todavía no disponible".
 test("endpoints públicos que todavía no existen", async () => {
   const fetchOriginal = globalThis.fetch;
   const responder = (status: number, mensaje: string) =>
@@ -258,11 +294,6 @@ test("endpoints públicos que todavía no existen", async () => {
     await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === NO_DISPONIBLE);
     globalThis.fetch = responder(401, "Necesitás iniciar sesión para hacer esto");
     await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === NO_DISPONIBLE);
-    globalThis.fetch = responder(404, "Variante no encontrada");
-    await assert.rejects(
-      api.checkout.confirmar({} as never),
-      (e: unknown) => e instanceof ApiError && e.status === 404 && e.mensaje === "Variante no encontrada"
-    );
     // Un endpoint que NO es público conserva su 401 (la sesión venció de verdad).
     globalThis.fetch = responder(401, "Necesitás iniciar sesión para hacer esto");
     await assert.rejects(api.pedidos.mios(), (e: unknown) => e instanceof ApiError && e.status === 401);

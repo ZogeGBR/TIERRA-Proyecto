@@ -59,6 +59,11 @@ function MensajeDe($r) {
     try { return ($r.Texto | ConvertFrom-Json).mensaje } catch { return $r.Texto }
 }
 
+# El campo "codigo" de un error (por ejemplo EMAIL_DEL_EQUIPO), o $null.
+function CodigoDe($r) {
+    try { return ($r.Texto | ConvertFrom-Json).codigo } catch { return $null }
+}
+
 function Condicion($ok, $descripcion) {
     $color = if ($ok) { "Green" } else { "Red" }
     $marca = if ($ok) { "OK " } else { "MAL" }
@@ -81,16 +86,51 @@ function ReiniciarCliente($email) {
     Sql "DELETE FROM codigos_acceso WHERE usuario_id = (SELECT id FROM usuarios WHERE email = '$email'); UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE email = '$email';" | Out-Null
 }
 
-# Cancela los pedidos PENDIENTES de las tres cuentas de prueba y libera el
-# stock que tenian reservado. Cada corrida de los scripts reserva unidades
-# por 20 minutos: sin esto, dos corridas seguidas se quedan sin stock y los
-# pedidos dan 409. Solo toca pedidos de test@, mostrador@ y admin@.
+# Cancela los pedidos PENDIENTES de las cuentas de prueba y libera el stock
+# que tenian reservado. Cada corrida de los scripts reserva unidades por 20
+# minutos: sin esto, dos corridas seguidas se quedan sin stock y los pedidos
+# dan 409. Solo toca pedidos de test@, mostrador@, admin@ y de los clientes
+# que crean los scripts del checkout (@prueba.tierra.esquel).
 function CancelarPedidosDePrueba {
-    Sql "WITH p AS (SELECT id FROM pedidos WHERE estado = 'PENDIENTE' AND usuario_id IN (SELECT id FROM usuarios WHERE email IN ('test@tierra.esquel', 'mostrador@tierra.esquel', 'admin@tierra.esquel'))), r AS (UPDATE reservas_stock SET liberada = true WHERE liberada = false AND pedido_id IN (SELECT id FROM p) RETURNING variante_id, cantidad), v AS (UPDATE variantes_producto vp SET stock_reservado = GREATEST(0, vp.stock_reservado - t.total) FROM (SELECT variante_id, SUM(cantidad) AS total FROM r GROUP BY variante_id) t WHERE vp.id = t.variante_id AND vp.controla_stock RETURNING 1) UPDATE pedidos SET estado = 'CANCELADO' WHERE id IN (SELECT id FROM p);" | Out-Null
+    Sql "WITH p AS (SELECT id FROM pedidos WHERE estado = 'PENDIENTE' AND usuario_id IN (SELECT id FROM usuarios WHERE email IN ('test@tierra.esquel', 'mostrador@tierra.esquel', 'admin@tierra.esquel') OR email LIKE '%@prueba.tierra.esquel')), r AS (UPDATE reservas_stock SET liberada = true WHERE liberada = false AND pedido_id IN (SELECT id FROM p) RETURNING variante_id, cantidad), v AS (UPDATE variantes_producto vp SET stock_reservado = GREATEST(0, vp.stock_reservado - t.total) FROM (SELECT variante_id, SUM(cantidad) AS total FROM r GROUP BY variante_id) t WHERE vp.id = t.variante_id AND vp.controla_stock RETURNING 1) UPDATE pedidos SET estado = 'CANCELADO' WHERE id IN (SELECT id FROM p);" | Out-Null
 }
 
 function DesbloquearTodos {
     Sql "UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL;" | Out-Null
+}
+
+# ---------------------------------------------------------------
+# Compras (POST /api/checkout)
+# ---------------------------------------------------------------
+
+# El id del ultimo pedido a nombre de ese email, o "" si no tiene.
+function UltimoPedido($email) {
+    return "$(Sql "SELECT p.id FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id WHERE u.email = '$email' ORDER BY p.creado_en DESC LIMIT 1;")".Trim()
+}
+
+# Verifica el resultado de una compra a nombre de $email. Hay dos respuestas
+# correctas, segun haya o no un token de prueba valido de Mercado Pago:
+#  - 201: el pedido queda PENDIENTE y viene el link de pago.
+#  - 503 (sin token valido o sin conexion con Mercado Pago): el pedido se
+#    cancela en el momento y no queda stock reservado.
+# Devuelve el id del pedido, o $null si la respuesta no es ninguna de las dos.
+function VerificarCompra($r, $email, $descripcion) {
+    $id = UltimoPedido $email
+    if ($r.Codigo -eq 201) {
+        $c = $r.Texto | ConvertFrom-Json
+        $estado = "$(Sql "SELECT estado FROM pedidos WHERE id = '$id';")".Trim()
+        Condicion ($c.pedidoId -eq $id -and $c.initPoint -and $c.expiraEn -and $estado -eq "PENDIENTE") "$descripcion -> 201, pedido PENDIENTE con link de pago"
+        return $id
+    }
+    if ($r.Codigo -eq 503) {
+        $codigo = CodigoDe $r
+        $estado = "$(Sql "SELECT estado FROM pedidos WHERE id = '$id';")".Trim()
+        $retenidas = "$(Sql "SELECT count(*) FROM reservas_stock WHERE pedido_id = '$id' AND NOT liberada;")".Trim()
+        Condicion ($id -and $codigo -eq "LINK_DE_PAGO_NO_DISPONIBLE" -and $estado -eq "CANCELADO" -and $retenidas -eq "0") "$descripcion -> 503 sin Mercado Pago: pedido cancelado y stock liberado"
+        return $id
+    }
+    Verificar $r 201 $descripcion
+    return $null
 }
 
 # ---------------------------------------------------------------

@@ -326,6 +326,8 @@ class PagoServiceTest {
             assertEquals(Boolean.TRUE, request.getExpires());
             assertTrue(request.getExpirationDateTo().toLocalDateTime()
                     .isBefore(reserva.getExpiraEn()), "la preferencia debe vencer antes que la reserva");
+            // Lo que se le informa al comprador es el mismo vencimiento que tiene el link.
+            assertEquals(request.getExpirationDateTo(), respuesta.expiraEn());
         }
 
         @Test

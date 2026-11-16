@@ -7,7 +7,8 @@
 $fallas = 0
 $variante = "e0000000-0000-0000-0000-000000000004"
 $items = "[{""varianteId"":""$variante"",""cantidad"":1}]"
-$pedido = "{""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}"
+# Una compra a nombre de test@. Con sesion de cliente el email se ignora.
+$compra = "{""nombre"":""Usuario de Prueba"",""email"":""test@tierra.esquel"",""telefono"":""2945 000000"",""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}"
 
 ReiniciarCliente "test@tierra.esquel"
 DesbloquearTodos
@@ -23,8 +24,9 @@ Write-Host " Los dos canales de acceso son publicos:"
 Verificar (Pedir $s POST "/api/auth/codigo" '{"email":"nadie@tierra.esquel"}') 200 "POST /api/auth/codigo"
 Verificar (Pedir $s POST "/api/auth/codigo/verificar" '{"email":"nadie@tierra.esquel","codigo":"123456"}') 401 "POST /api/auth/codigo/verificar (codigo invalido)"
 Verificar (Pedir $s POST "/api/auth/equipo/login" '{"email":"nadie@tierra.esquel","password":"x"}') 401 "POST /api/auth/equipo/login (credenciales invalidas)"
+Write-Host " Comprar no exige cuenta (decision 0005):"
+VerificarCompra (Pedir $s POST "/api/checkout" $compra) "test@tierra.esquel" "POST /api/checkout" | Out-Null
 Write-Host " Lo demas, no:"
-Verificar (Pedir $s POST "/api/pedidos" $pedido) 401 "POST /api/pedidos"
 Verificar (Pedir $s GET "/api/admin/sesion") 401 "GET /api/admin/sesion"
 Verificar (Pedir $s GET "/api/auth/yo") 401 "GET /api/auth/yo"
 Write-Host " El webhook de Mercado Pago sigue accesible:"
@@ -34,7 +36,7 @@ Write-Host "`n=== COMO CLIENTE (entra con codigo) ===" -ForegroundColor Cyan
 $s = NuevaSesion
 Verificar (EntrarComoCliente $s "test@tierra.esquel") 200 "entrar con codigo"
 Verificar (Pedir $s GET "/api/auth/yo") 200 "GET /api/auth/yo"
-Verificar (Pedir $s POST "/api/pedidos" $pedido) 201 "POST /api/pedidos"
+VerificarCompra (Pedir $s POST "/api/checkout" $compra) "test@tierra.esquel" "POST /api/checkout" | Out-Null
 Write-Host " Un cliente NO entra al panel:"
 Verificar (Pedir $s GET "/api/admin/sesion") 403 "GET /api/admin/sesion"
 Verificar (Pedir $s GET "/api/admin/reportes/verificacion") 403 "GET /api/admin/reportes/verificacion"
@@ -56,9 +58,10 @@ Verificar (Pedir $s GET "/api/admin/reportes/verificacion") 200 "GET /api/admin/
 Write-Host "`n=== CIERRE POR DENEGACION ===" -ForegroundColor Cyan
 Write-Host " Una ruta que nadie declaro tiene que fallar, no quedar abierta:"
 Verificar (Pedir (NuevaSesion) GET "/api/ruta-inventada") 401 "GET /api/ruta-inventada"
-Write-Host " Las rutas del registro y del login viejo ya no existen:"
+Write-Host " Las rutas del registro, del login viejo y del alta de pedidos con sesion ya no existen:"
 Verificar (Pedir (NuevaSesion) POST "/api/auth/login" '{"email":"admin@tierra.esquel","password":"tierra2026"}') 401 "POST /api/auth/login"
 Verificar (Pedir (NuevaSesion) POST "/api/auth/registro" '{"nombre":"X","email":"x@x.com","password":"12345678"}') 401 "POST /api/auth/registro"
+Verificar (Pedir (NuevaSesion) POST "/api/pedidos" "{""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}") 401 "POST /api/pedidos"
 
 ReiniciarCliente "test@tierra.esquel"
 CancelarPedidosDePrueba

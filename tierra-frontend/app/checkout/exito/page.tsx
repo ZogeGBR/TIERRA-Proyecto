@@ -44,7 +44,7 @@ export default async function CheckoutExitoPage({
           </>
         }
       >
-        <p>¡Listo! Recibimos tu pago. Te mandamos la confirmación por email.</p>
+        <p>¡Listo! Recibimos tu pago y lo estamos acreditando.</p>
         {pedidoId && (
           <p>
             Tu pedido <span className="font-semibold">N° {numeroDePedido(pedidoId)}</span> quedó registrado. Guardá

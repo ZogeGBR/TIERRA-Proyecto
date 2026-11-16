@@ -1,5 +1,8 @@
 package com.tierra.ecommerce.dto;
 
-// initPoint es la URL de checkout de Mercado Pago a la que el frontend
-// redirige al usuario para completar el pago (tarjeta, cuotas, dinero en cuenta, etc.)
-public record PreferenciaPagoResponse(String preferenceId, String initPoint) {}
+import java.time.OffsetDateTime;
+
+// expiraEn: hasta cuándo sirve el link de pago (el vencimiento de la
+// preferencia de Mercado Pago). El checkout lo devuelve para que el frontend
+// pueda ofrecer "volver a pagar" con el mismo link mientras no venza.
+public record PreferenciaPagoResponse(String preferenceId, String initPoint, OffsetDateTime expiraEn) {}

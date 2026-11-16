@@ -1,10 +1,9 @@
 package com.tierra.ecommerce.service;
 
-import com.tierra.ecommerce.dto.CrearPedidoRequest;
 import com.tierra.ecommerce.dto.ItemPedidoRequest;
-import com.tierra.ecommerce.dto.PedidoResponseDTO;
 import com.tierra.ecommerce.entity.*;
 import com.tierra.ecommerce.enums.EstadoPedido;
+import com.tierra.ecommerce.enums.TipoEntrega;
 import com.tierra.ecommerce.exception.RecursoNoEncontradoException;
 import com.tierra.ecommerce.repository.*;
 import org.springframework.stereotype.Service;
@@ -14,105 +13,77 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.UUID;
 
-import com.tierra.ecommerce.enums.TipoEntrega;
-
-// A partir de v2: este service YA NO descuenta stock directamente (ese
-// era el bug de v1 — se descontaba antes de saber si el pago se iba a
-// aprobar). Acá solo se RESERVA vía InventarioService.reservarStockWeb;
-// el descuento real ocurre en PagoService.confirmarPago cuando Mercado
-// Pago aprueba, o se libera si el pago falla o el pedido se abandona.
+// Arma un pedido: copia el contacto y la dirección, calcula el costo del
+// envío, reserva el stock y fija los precios. Lo llama solo CheckoutService,
+// que es la única puerta para crear pedidos (ADR 0005).
+//
+// Este service NO descuenta stock: solo lo RESERVA vía InventarioService. El
+// descuento real ocurre en PagoService.confirmarPago cuando Mercado Pago
+// aprueba, o se libera si el pago falla o el pedido se abandona.
+//
+// Los cupones no se aplican en la Fase 2: el código que había no contaba los
+// usos ni validaba fechas. Vuelven, corregidos, con la tarea 15 (Fase 3).
 @Service
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final PedidoItemRepository pedidoItemRepository;
     private final VarianteProductoRepository varianteRepository;
-    private final UsuarioRepository usuarioRepository;
-    private final DireccionRepository direccionRepository;
-    private final CuponRepository cuponRepository;
+    private final ReservaStockRepository reservaStockRepository;
     private final InventarioService inventarioService;
     private final EnvioService envioService;
 
     public PedidoService(PedidoRepository pedidoRepository,
-                          PedidoItemRepository pedidoItemRepository,
-                          VarianteProductoRepository varianteRepository,
-                          UsuarioRepository usuarioRepository,
-                          DireccionRepository direccionRepository,
-                          CuponRepository cuponRepository,
-                          InventarioService inventarioService,
-                          EnvioService envioService) {
+                         PedidoItemRepository pedidoItemRepository,
+                         VarianteProductoRepository varianteRepository,
+                         ReservaStockRepository reservaStockRepository,
+                         InventarioService inventarioService,
+                         EnvioService envioService) {
         this.pedidoRepository = pedidoRepository;
         this.pedidoItemRepository = pedidoItemRepository;
         this.varianteRepository = varianteRepository;
-        this.usuarioRepository = usuarioRepository;
-        this.direccionRepository = direccionRepository;
-        this.cuponRepository = cuponRepository;
+        this.reservaStockRepository = reservaStockRepository;
         this.inventarioService = inventarioService;
         this.envioService = envioService;
     }
 
-    // El usuarioId llega como parámetro y no dentro del request: sale de la
-    // sesión, no del cuerpo que manda el cliente. El service no conoce a Spring
-    // Security — el controller le pasa el id ya resuelto, y así esta clase
-    // sigue siendo probable sin levantar un contexto web.
+    // El cliente llega ya resuelto (de la sesión o del email del checkout). El
+    // service no conoce a Spring Security ni al request HTTP: así se prueba
+    // sin levantar un contexto web.
     @Transactional
-    public PedidoResponseDTO crearPedido(UUID usuarioId, CrearPedidoRequest request) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
-
-        Pedido pedido = new Pedido();
-        pedido.setUsuario(usuario);
-        pedido.setTipoEntrega(request.tipoEntrega());
-
-        if (request.tipoEntrega() == TipoEntrega.ENVIO_DOMICILIO) {
-            if (request.direccionEnvioId() == null) {
-                throw new IllegalArgumentException("La dirección de envío es obligatoria para envío a domicilio");
-            }
-            Direccion direccion = direccionRepository.findById(request.direccionEnvioId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Dirección de envío no encontrada"));
-
-            // La dirección tiene que ser del usuario de la sesión. Responder
-            // "no encontrada" en vez de "no es tuya" es deliberado: no le
-            // confirma a nadie que el recurso existe.
-            if (!direccion.getUsuario().getId().equals(usuario.getId())) {
-                throw new RecursoNoEncontradoException("Dirección de envío no encontrada");
-            }
-
-            DireccionEntrega snapshot = new DireccionEntrega(
-                    direccion.getCalle(),
-                    direccion.getNumero(),
-                    direccion.getCiudad(),
-                    direccion.getProvincia(),
-                    direccion.getCodigoPostal()
-            );
-            pedido.setDireccionEntrega(snapshot);
-        } else {
-            pedido.setDireccionEntrega(null);
-        }
+    public Pedido crearPedido(Usuario cliente, NuevoPedido datos) {
+        boolean conEnvio = datos.tipoEntrega() == TipoEntrega.ENVIO_DOMICILIO;
+        DireccionEntrega direccion = conEnvio ? datos.direccion() : null;
 
         // El costo del envío se calcula antes de reservar stock: un destino
         // fuera de zona se rechaza sin tocar el inventario. Es el mismo cálculo
         // que muestra la cotización (EnvioService), nunca un monto del request.
-        DireccionEntrega destino = pedido.getDireccionEntrega();
         BigDecimal costoEnvio = envioService.costoParaPedido(
-                request.tipoEntrega(),
-                destino == null ? null : destino.getProvincia(),
-                destino == null ? null : destino.getCodigoPostal(),
-                request.items());
+                datos.tipoEntrega(),
+                direccion == null ? null : direccion.getProvincia(),
+                direccion == null ? null : direccion.getCodigoPostal(),
+                datos.items());
 
+        Pedido pedido = new Pedido();
+        pedido.setUsuario(cliente);
+        pedido.setTipoEntrega(datos.tipoEntrega());
+        pedido.setDireccionEntrega(direccion);
+        pedido.setContactoNombre(datos.contactoNombre());
+        pedido.setContactoTelefono(datos.contactoTelefono());
+        pedido.setContactoDni(conEnvio ? datos.contactoDni() : null);
         pedido.setEstado(EstadoPedido.PENDIENTE);
         pedido.setSubtotal(BigDecimal.ZERO);
         pedido.setTotal(BigDecimal.ZERO);
         pedido = pedidoRepository.save(pedido);
 
         BigDecimal subtotal = BigDecimal.ZERO;
-
-        for (ItemPedidoRequest itemReq : request.items()) {
+        for (ItemPedidoRequest itemReq : datos.items()) {
             VarianteProducto variante = varianteRepository.findById(itemReq.varianteId())
+                    .filter(v -> v.getProducto().isActivo())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Variante no encontrada: " + itemReq.varianteId()));
 
-            // Reserva (no descuenta) y lanza StockInsuficienteException si no alcanza.
-            // El lock de fila ocurre adentro de reservarStockWeb.
+            // Reserva (no descuenta) y lanza StockInsuficienteException si no
+            // alcanza. El bloqueo de la fila ocurre adentro.
             inventarioService.reservarStock(itemReq.varianteId(), itemReq.cantidad(), pedido);
 
             BigDecimal precioUnitario = variante.getProducto().getPrecio().add(variante.getPrecioAdicional());
@@ -127,45 +98,31 @@ public class PedidoService {
             subtotal = subtotal.add(precioUnitario.multiply(BigDecimal.valueOf(itemReq.cantidad())));
         }
 
-        BigDecimal descuento = calcularDescuento(request.codigoCupon(), subtotal);
-
-        BigDecimal total = subtotal.subtract(descuento).add(costoEnvio).setScale(2, RoundingMode.HALF_UP);
-
         pedido.setSubtotal(subtotal);
-        pedido.setDescuento(descuento);
+        pedido.setDescuento(BigDecimal.ZERO);
         pedido.setCostoEnvio(costoEnvio);
-        pedido.setTotal(total);
-        pedido = pedidoRepository.save(pedido);
-
-        return aResponseDTO(pedido);
+        pedido.setTotal(subtotal.add(costoEnvio).setScale(2, RoundingMode.HALF_UP));
+        return pedidoRepository.save(pedido);
     }
 
-    private BigDecimal calcularDescuento(String codigoCupon, BigDecimal subtotal) {
-        if (codigoCupon == null || codigoCupon.isBlank()) {
-            return BigDecimal.ZERO;
+    // Cancela un pedido que no se puede pagar porque Mercado Pago no devolvió
+    // el link, y libera su stock en el momento (ADR 0005). Sin esto, el stock
+    // quedaría retenido veinte minutos por un pedido que nadie puede pagar, y
+    // si era la última unidad el mismo comprador vería "sin stock" al
+    // reintentar. Es seguro: sin link, nadie puede pagarlo.
+    //
+    // Solo actúa sobre un pedido PENDIENTE: si por algún motivo ya cambió de
+    // estado, no lo toca.
+    @Transactional
+    public void cancelarSinLinkDePago(UUID pedidoId) {
+        Pedido pedido = pedidoRepository.findByIdConBloqueo(pedidoId).orElse(null);
+        if (pedido == null || pedido.getEstado() != EstadoPedido.PENDIENTE) {
+            return;
         }
-        Cupon cupon = cuponRepository.findByCodigo(codigoCupon)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Cupón inválido: " + codigoCupon));
-
-        if (cupon.getUsosMaximos() != null && cupon.getUsosActuales() >= cupon.getUsosMaximos()) {
-            throw new RecursoNoEncontradoException("El cupón " + codigoCupon + " ya alcanzó el máximo de usos");
+        for (ReservaStock reserva : reservaStockRepository.findByPedidoId(pedidoId)) {
+            inventarioService.liberarReserva(reserva);
         }
-
-        if (cupon.getMontoDescuento() != null) {
-            return cupon.getMontoDescuento();
-        }
-        if (cupon.getPorcentajeDescuento() != null) {
-            return subtotal.multiply(cupon.getPorcentajeDescuento())
-                    .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
-        }
-        return BigDecimal.ZERO;
-    }
-
-    private PedidoResponseDTO aResponseDTO(Pedido pedido) {
-        return new PedidoResponseDTO(
-                pedido.getId(), pedido.getTipoEntrega(), pedido.getDireccionEntrega(),
-                pedido.getEstado(), pedido.getSubtotal(),
-                pedido.getDescuento(), pedido.getCostoEnvio(), pedido.getTotal(), pedido.getCreadoEn()
-        );
+        pedido.setEstado(EstadoPedido.CANCELADO);
+        pedidoRepository.save(pedido);
     }
 }

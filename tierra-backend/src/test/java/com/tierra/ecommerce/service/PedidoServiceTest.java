@@ -1,16 +1,14 @@
 package com.tierra.ecommerce.service;
 
-import com.tierra.ecommerce.dto.CrearPedidoRequest;
 import com.tierra.ecommerce.dto.ItemPedidoRequest;
-import com.tierra.ecommerce.dto.PedidoResponseDTO;
 import com.tierra.ecommerce.entity.*;
+import com.tierra.ecommerce.enums.EstadoPedido;
 import com.tierra.ecommerce.enums.TipoEntrega;
 import com.tierra.ecommerce.exception.RecursoNoEncontradoException;
 import com.tierra.ecommerce.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,234 +27,155 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PedidoServiceTest {
 
-    @Mock
-    private PedidoRepository pedidoRepository;
-    @Mock
-    private PedidoItemRepository pedidoItemRepository;
-    @Mock
-    private VarianteProductoRepository varianteRepository;
-    @Mock
-    private UsuarioRepository usuarioRepository;
-    @Mock
-    private DireccionRepository direccionRepository;
-    @Mock
-    private CuponRepository cuponRepository;
-    @Mock
-    private InventarioService inventarioService;
-    @Mock
-    private EnvioService envioService;
+    @Mock private PedidoRepository pedidoRepository;
+    @Mock private PedidoItemRepository pedidoItemRepository;
+    @Mock private VarianteProductoRepository varianteRepository;
+    @Mock private ReservaStockRepository reservaStockRepository;
+    @Mock private InventarioService inventarioService;
+    @Mock private EnvioService envioService;
+    @InjectMocks private PedidoService pedidoService;
 
-    @InjectMocks
-    private PedidoService pedidoService;
-
-    private Usuario usuario;
-    private Direccion direccion;
+    private Usuario cliente;
     private VarianteProducto variante;
-    private UUID usuarioId;
-    private UUID direccionId;
-    private UUID varianteId;
+    private List<ItemPedidoRequest> items;
+    private DireccionEntrega direccion;
 
     @BeforeEach
     void setUp() {
-        usuarioId = UUID.randomUUID();
-        direccionId = UUID.randomUUID();
-        varianteId = UUID.randomUUID();
-
-        usuario = new Usuario();
-        usuario.setId(usuarioId);
-        usuario.setNombre("Juan Perez");
-        usuario.setEmail("juan@example.com");
-
-        direccion = new Direccion();
-        direccion.setId(direccionId);
-        direccion.setUsuario(usuario);
-        direccion.setCalle("Av. San Martín");
-        direccion.setNumero("123");
-        direccion.setCiudad("Esquel");
-        direccion.setProvincia("Chubut");
-        direccion.setCodigoPostal("9200");
+        cliente = new Usuario();
+        cliente.setId(UUID.randomUUID());
+        cliente.setNombre("Juan Perez");
+        cliente.setEmail("juan@example.com");
 
         Producto producto = new Producto();
         producto.setId(UUID.randomUUID());
         producto.setNombre("Carpa");
         producto.setPrecio(BigDecimal.valueOf(50000));
-
+        producto.setActivo(true);
         variante = new VarianteProducto();
-        variante.setId(varianteId);
+        variante.setId(UUID.randomUUID());
         variante.setProducto(producto);
-        variante.setPrecioAdicional(BigDecimal.ZERO);
+        variante.setPrecioAdicional(BigDecimal.valueOf(2000));
+        items = List.of(new ItemPedidoRequest(variante.getId(), 2));
 
-        // El costo del envío lo decide EnvioService (tiene sus propios tests).
-        // Acá se simula lo que responde para cada tipo de entrega.
-        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.RETIRO_LOCAL), any(), any(), any()))
-                .thenReturn(BigDecimal.ZERO);
-        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.ENVIO_DOMICILIO), any(), any(), any()))
-                .thenReturn(new BigDecimal("12000"));
+        direccion = new DireccionEntrega("Av. San Martín", "123", "2", "B", "Esquel", "Chubut", "9200");
+
+        lenient().when(varianteRepository.findById(variante.getId())).thenReturn(Optional.of(variante));
+        lenient().when(pedidoRepository.save(any(Pedido.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.RETIRO_LOCAL), any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.ENVIO_DOMICILIO), any(), any(), any())).thenReturn(new BigDecimal("12000"));
+    }
+
+    private NuevoPedido conEnvio() {
+        return new NuevoPedido(TipoEntrega.ENVIO_DOMICILIO, direccion, "Ana Destinataria", "2945 123456", "30111222", items);
+    }
+
+    private NuevoPedido conRetiro() {
+        return new NuevoPedido(TipoEntrega.RETIRO_LOCAL, null, "Ana Destinataria", "2945 123456", null, items);
+    }
+
+    // Lo que motiva la V10: el contacto y la dirección quedan copiados en el
+    // pedido, no en la cuenta del cliente.
+    @Test
+    void elContactoYLaDireccionQuedanCopiadosEnElPedido() {
+        Pedido pedido = pedidoService.crearPedido(cliente, conEnvio());
+
+        assertEquals("Ana Destinataria", pedido.getContactoNombre());
+        assertEquals("2945 123456", pedido.getContactoTelefono());
+        assertEquals("30111222", pedido.getContactoDni());
+        assertEquals("Av. San Martín", pedido.getDireccionEntrega().getCalle());
+        assertEquals("2", pedido.getDireccionEntrega().getPiso());
+        assertEquals("B", pedido.getDireccionEntrega().getDepartamento());
+        assertEquals("9200", pedido.getDireccionEntrega().getCodigoPostal());
+        assertSame(cliente, pedido.getUsuario());
+        // La cuenta no se toca: el teléfono y el DNI no pasan al usuario.
+        assertNull(cliente.getTelefono());
+        assertNull(cliente.getDni());
     }
 
     @Test
-    void crearPedido_elCostoDeEnvioLoCalculaEnvioServiceConElDestinoDelPedido() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
-        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
-        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        List<ItemPedidoRequest> items = List.of(new ItemPedidoRequest(varianteId, 1));
+    void conRetiroNoHayDireccionNiDniYNoSeCobraEnvio() {
+        Pedido pedido = pedidoService.crearPedido(cliente, conRetiro());
 
-        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId,
-                new CrearPedidoRequest(TipoEntrega.ENVIO_DOMICILIO, direccionId, null, items));
+        assertNull(pedido.getDireccionEntrega());
+        assertNull(pedido.getContactoDni());
+        assertEquals(0, BigDecimal.ZERO.compareTo(pedido.getCostoEnvio()));
+        assertEquals(0, new BigDecimal("104000").compareTo(pedido.getTotal()));
+    }
+
+    @Test
+    void conRetiroSeDescartanDniYDireccionAunqueLleguen() {
+        NuevoPedido conDatosDeMas = new NuevoPedido(TipoEntrega.RETIRO_LOCAL, direccion, "Ana", "2945 123456", "30111222", items);
+
+        Pedido pedido = pedidoService.crearPedido(cliente, conDatosDeMas);
+
+        assertNull(pedido.getDireccionEntrega());
+        assertNull(pedido.getContactoDni());
+    }
+
+    @Test
+    void elTotalSumaLosPreciosDeLasVariantesYElEnvioDeEnvioService() {
+        Pedido pedido = pedidoService.crearPedido(cliente, conEnvio());
 
         verify(envioService).costoParaPedido(TipoEntrega.ENVIO_DOMICILIO, "Chubut", "9200", items);
-        assertEquals(0, new BigDecimal("12000").compareTo(response.costoEnvio()));
-        assertEquals(0, new BigDecimal("62000").compareTo(response.total()));
+        assertEquals(0, new BigDecimal("104000").compareTo(pedido.getSubtotal()));
+        assertEquals(0, new BigDecimal("12000").compareTo(pedido.getCostoEnvio()));
+        assertEquals(0, new BigDecimal("116000").compareTo(pedido.getTotal()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(pedido.getDescuento()));
+        assertEquals(EstadoPedido.PENDIENTE, pedido.getEstado());
+        verify(inventarioService).reservarStock(eq(variante.getId()), eq(2), any(Pedido.class));
     }
 
-    // Un destino fuera de zona se rechaza ANTES de reservar stock: si se
-    // reservara primero, el rechazo dejaría unidades retenidas hasta que la
-    // transacción se deshaga.
+    // Un destino fuera de zona se rechaza ANTES de reservar stock.
     @Test
-    void crearPedido_fueraDeCobertura_seRechazaSinReservarStock() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
+    void fueraDeCoberturaSeRechazaSinReservarStock() {
         when(envioService.costoParaPedido(eq(TipoEntrega.ENVIO_DOMICILIO), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("Por ahora enviamos a domicilio solo a ..."));
 
-        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(usuarioId,
-                new CrearPedidoRequest(TipoEntrega.ENVIO_DOMICILIO, direccionId, null,
-                        List.of(new ItemPedidoRequest(varianteId, 1)))));
+        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(cliente, conEnvio()));
 
         verify(inventarioService, never()).reservarStock(any(), anyInt(), any());
         verify(pedidoRepository, never()).save(any());
     }
 
     @Test
-    void crearPedido_conEnvioDomicilio_copiaDireccionSnapshot() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
-        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
-        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    void unaVarianteDeUnProductoInactivoNoSePuedeComprar() {
+        variante.getProducto().setActivo(false);
 
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.ENVIO_DOMICILIO,
-                direccionId,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
+        assertThrows(RecursoNoEncontradoException.class, () -> pedidoService.crearPedido(cliente, conRetiro()));
+        verify(inventarioService, never()).reservarStock(any(), anyInt(), any());
+    }
 
-        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
+    // ---------- Cancelar cuando falla el link de pago ----------
 
-        assertNotNull(response);
-        assertEquals(TipoEntrega.ENVIO_DOMICILIO, response.tipoEntrega());
-        assertNotNull(response.direccionEntrega());
-        assertEquals("Av. San Martín", response.direccionEntrega().getCalle());
-        assertEquals("123", response.direccionEntrega().getNumero());
-        assertEquals("Esquel", response.direccionEntrega().getCiudad());
-        assertEquals("Chubut", response.direccionEntrega().getProvincia());
-        assertEquals("9200", response.direccionEntrega().getCodigoPostal());
+    @Test
+    void cancelarSinLinkLiberaElStockYCancelaElPedido() {
+        Pedido pedido = new Pedido();
+        pedido.setId(UUID.randomUUID());
+        pedido.setEstado(EstadoPedido.PENDIENTE);
+        ReservaStock r1 = new ReservaStock();
+        ReservaStock r2 = new ReservaStock();
+        when(pedidoRepository.findByIdConBloqueo(pedido.getId())).thenReturn(Optional.of(pedido));
+        when(reservaStockRepository.findByPedidoId(pedido.getId())).thenReturn(List.of(r1, r2));
 
-        ArgumentCaptor<Pedido> captor = ArgumentCaptor.forClass(Pedido.class);
-        verify(pedidoRepository, atLeastOnce()).save(captor.capture());
-        Pedido guardado = captor.getValue();
-        assertEquals(TipoEntrega.ENVIO_DOMICILIO, guardado.getTipoEntrega());
-        assertNotNull(guardado.getDireccionEntrega());
-        assertEquals("Av. San Martín", guardado.getDireccionEntrega().getCalle());
+        pedidoService.cancelarSinLinkDePago(pedido.getId());
+
+        verify(inventarioService).liberarReserva(r1);
+        verify(inventarioService).liberarReserva(r2);
+        assertEquals(EstadoPedido.CANCELADO, pedido.getEstado());
     }
 
     @Test
-    void crearPedido_conRetiroLocal_sinDireccion() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
-        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    void cancelarSinLinkNoTocaUnPedidoQueYaNoEstaPendiente() {
+        Pedido pedido = new Pedido();
+        pedido.setId(UUID.randomUUID());
+        pedido.setEstado(EstadoPedido.PAGADO);
+        when(pedidoRepository.findByIdConBloqueo(pedido.getId())).thenReturn(Optional.of(pedido));
 
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.RETIRO_LOCAL,
-                null,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
+        pedidoService.cancelarSinLinkDePago(pedido.getId());
 
-        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
-
-        assertNotNull(response);
-        assertEquals(TipoEntrega.RETIRO_LOCAL, response.tipoEntrega());
-        assertNull(response.direccionEntrega());
-        verify(direccionRepository, never()).findById(any());
-    }
-
-    @Test
-    void crearPedido_conEnvioDomicilio_sinDireccion_lanzaIllegalArgumentException() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.ENVIO_DOMICILIO,
-                null,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
-
-        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(usuarioId, request));
-    }
-
-    @Test
-    void crearPedido_conRetiroLocal_noCobraEnvio() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
-        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.RETIRO_LOCAL,
-                null,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
-
-        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
-
-        // Antes se cobraba el envío igual, sin mirar el tipo de entrega,
-        // mientras el frontend mostraba el total sin él.
-        assertEquals(0, BigDecimal.ZERO.compareTo(response.costoEnvio()));
-        assertEquals(0, response.subtotal().compareTo(response.total()));
-    }
-
-    @Test
-    void crearPedido_conEnvioDomicilio_cobraEnvio() {
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
-        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
-        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.ENVIO_DOMICILIO,
-                direccionId,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
-
-        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId, request);
-
-        assertTrue(response.costoEnvio().compareTo(BigDecimal.ZERO) > 0);
-        assertEquals(0, response.subtotal().add(response.costoEnvio()).compareTo(response.total()));
-    }
-
-    // Este test pasó a cubrir un caso real. Antes el usuarioId venía dentro
-    // del request, así que un atacante podía mandar el id de la víctima junto
-    // con una dirección suya y la comparación daba verdadero. Ahora el id sale
-    // de la sesión: lo único que puede mandar es la dirección, y no es suya.
-    @Test
-    void crearPedido_conDireccionDeOtroUsuario_lanzaRecursoNoEncontradoException() {
-        Usuario otroUsuario = new Usuario();
-        otroUsuario.setId(UUID.randomUUID());
-        direccion.setUsuario(otroUsuario);
-
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
-
-        CrearPedidoRequest request = new CrearPedidoRequest(
-                TipoEntrega.ENVIO_DOMICILIO,
-                direccionId,
-                null,
-                List.of(new ItemPedidoRequest(varianteId, 1))
-        );
-
-        assertThrows(RecursoNoEncontradoException.class, () -> pedidoService.crearPedido(usuarioId, request));
+        assertEquals(EstadoPedido.PAGADO, pedido.getEstado());
+        verifyNoInteractions(inventarioService);
+        verify(pedidoRepository, never()).save(any());
     }
 }

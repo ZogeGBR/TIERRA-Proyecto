@@ -22,11 +22,9 @@ const CLASE_CAMPO =
   "focus:outline-none focus:ring-2 focus:ring-white/80 focus:bg-white/40 transition-colors";
 
 // Ingreso de CLIENTES, en dos pasos y sin contraseña (ADR 0005): primero el
-// email, después el código de 6 dígitos que llega a ese email.
-//
-// Con el checkout sin cuenta (tarea 9) va a servir solo para ver los pedidos y
-// los datos guardados. Hasta entonces el checkout todavía exige sesión, así
-// que esta pantalla tampoco promete que se pueda comprar sin entrar.
+// email, después el código de 6 dígitos que llega a ese email. No hace falta
+// para comprar (decisión 0005); sirve para ver los pedidos y los datos
+// guardados.
 function FormularioLogin() {
   const { usuario, solicitarCodigo, verificarCodigo } = useAuth();
   const router = useRouter();
@@ -138,7 +136,7 @@ function FormularioLogin() {
 
   return (
     <PantallaAcceso
-      titulo={paso === "email" ? "Entrá con tu email" : "Revisá tu email"}
+      titulo={paso === "email" ? "Ver mis pedidos" : "Revisá tu email"}
       subtitulo={
         paso === "email"
           ? "Sin contraseña: te mandamos un código de 6 dígitos."
@@ -182,6 +180,10 @@ function FormularioLogin() {
           >
             {enviando ? "Enviando…" : "Enviarme el código"}
           </button>
+
+          <p className="text-center text-white/80 text-xs">
+            Para comprar no necesitás cuenta ni código.
+          </p>
         </form>
       ) : (
         <form

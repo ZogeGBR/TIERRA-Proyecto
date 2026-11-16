@@ -60,7 +60,15 @@ export function firmaDeCompra(
     .join(",");
   const destino =
     tipoEntrega === "ENVIO_DOMICILIO" && direccion
-      ? [direccion.calle, direccion.numero ?? "", direccion.ciudad, direccion.provincia, direccion.codigoPostal]
+      ? [
+          direccion.calle,
+          direccion.numero ?? "",
+          direccion.piso ?? "",
+          direccion.departamento ?? "",
+          direccion.ciudad,
+          direccion.provincia,
+          direccion.codigoPostal
+        ]
           .map((p) => p.trim().toLowerCase())
           .join("|")
       : "retiro";

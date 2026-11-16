@@ -31,6 +31,7 @@ public class PedidoService {
     private final DireccionRepository direccionRepository;
     private final CuponRepository cuponRepository;
     private final InventarioService inventarioService;
+    private final EnvioService envioService;
 
     public PedidoService(PedidoRepository pedidoRepository,
                           PedidoItemRepository pedidoItemRepository,
@@ -38,7 +39,8 @@ public class PedidoService {
                           UsuarioRepository usuarioRepository,
                           DireccionRepository direccionRepository,
                           CuponRepository cuponRepository,
-                          InventarioService inventarioService) {
+                          InventarioService inventarioService,
+                          EnvioService envioService) {
         this.pedidoRepository = pedidoRepository;
         this.pedidoItemRepository = pedidoItemRepository;
         this.varianteRepository = varianteRepository;
@@ -46,6 +48,7 @@ public class PedidoService {
         this.direccionRepository = direccionRepository;
         this.cuponRepository = cuponRepository;
         this.inventarioService = inventarioService;
+        this.envioService = envioService;
     }
 
     // El usuarioId llega como parámetro y no dentro del request: sale de la
@@ -87,6 +90,16 @@ public class PedidoService {
             pedido.setDireccionEntrega(null);
         }
 
+        // El costo del envío se calcula antes de reservar stock: un destino
+        // fuera de zona se rechaza sin tocar el inventario. Es el mismo cálculo
+        // que muestra la cotización (EnvioService), nunca un monto del request.
+        DireccionEntrega destino = pedido.getDireccionEntrega();
+        BigDecimal costoEnvio = envioService.costoParaPedido(
+                request.tipoEntrega(),
+                destino == null ? null : destino.getProvincia(),
+                destino == null ? null : destino.getCodigoPostal(),
+                request.items());
+
         pedido.setEstado(EstadoPedido.PENDIENTE);
         pedido.setSubtotal(BigDecimal.ZERO);
         pedido.setTotal(BigDecimal.ZERO);
@@ -116,16 +129,6 @@ public class PedidoService {
 
         BigDecimal descuento = calcularDescuento(request.codigoCupon(), subtotal);
 
-        // Retirar en el local no cuesta nada. Antes se cobraba el envío igual,
-        // sin mirar el tipo de entrega, mientras el frontend mostraba el total
-        // sin él: el comprador veía un número y pagaba otro.
-        //
-        // El valor fijo de los envíos a domicilio sigue siendo de relleno. El
-        // cálculo real depende de la definición de envíos que falta cerrar con
-        // el cliente, y es trabajo de otra tarea.
-        BigDecimal costoEnvio = request.tipoEntrega() == TipoEntrega.RETIRO_LOCAL
-                ? BigDecimal.ZERO
-                : BigDecimal.valueOf(12000); // TODO: cálculo real por código postal / transportista
         BigDecimal total = subtotal.subtract(descuento).add(costoEnvio).setScale(2, RoundingMode.HALF_UP);
 
         pedido.setSubtotal(subtotal);

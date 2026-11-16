@@ -88,6 +88,17 @@ auth:
     # archivo de esta carpeta para que lo lean los scripts de verificación.
     directorio-desarrollo: ${CODIGO_DIRECTORIO_DEV:target/codigos-dev}
 
+# Envíos (tarea 10, decisión 0006).
+envios:
+  # Quién calcula el costo: "fijo" (un mismo monto para toda la zona). Cuando
+  # estén las credenciales de Andreani, se agrega "andreani".
+  proveedor: ${ENVIO_PROVEEDOR:fijo}
+  # Monto del cotizador fijo, en pesos.
+  costo-fijo: ${ENVIO_COSTO_FIJO:12000}
+  # Provincias con envío a domicilio, separadas por coma. Se comparan sin
+  # tildes ni mayúsculas. Fuera de la lista se ofrece el retiro en el local.
+  provincias-con-cobertura: ${ENVIO_PROVINCIAS:Neuquén,Río Negro,Chubut,Santa Cruz}
+
 cors:
   # Lista separada por comas. Nunca comodín: con credenciales habilitadas la
   # especificación de CORS lo prohíbe y el navegador rechaza la respuesta.

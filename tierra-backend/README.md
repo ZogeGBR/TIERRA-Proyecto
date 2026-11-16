@@ -65,9 +65,10 @@ se sacó por completo cuando se confirmó que no hacía falta.)
   controller.
 - **Facturación electrónica** — ya emiten factura hoy con un sistema
   intermedio (no ARCA directo); falta identificar cuál e integrarlo.
-- **Costo de envío fijo** en `PedidoService` — el cliente cotiza los
-  envíos al momento, no hay tarifa fija ni por zona todavía; falta
-  reemplazar el placeholder por el criterio real.
-- **Alcance geográfico de envíos**: arrancar solo con Patagonia (Chubut,
-  Santa Cruz, Río Negro, Neuquén) antes de abrir a todo el país — no está
-  restringido en el código todavía.
+- **Integración con Andreani** — el costo del envío ya sale de
+  `EnvioService` y de un cotizador intercambiable (hoy un monto fijo
+  configurable, `ENVIO_COSTO_FIJO`). Falta el cotizador de Andreani y crear
+  el envío cuando se aprueba el pago: ver
+  `docs/decisiones/0006-envios-cotizador-intercambiable-andreani.md`.
+  La zona de envío (Neuquén, Río Negro, Chubut y Santa Cruz) está en
+  configuración (`ENVIO_PROVINCIAS`).

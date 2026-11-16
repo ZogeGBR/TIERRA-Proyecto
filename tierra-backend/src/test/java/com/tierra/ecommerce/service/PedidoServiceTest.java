@@ -22,6 +22,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +43,8 @@ class PedidoServiceTest {
     private CuponRepository cuponRepository;
     @Mock
     private InventarioService inventarioService;
+    @Mock
+    private EnvioService envioService;
 
     @InjectMocks
     private PedidoService pedidoService;
@@ -81,6 +85,47 @@ class PedidoServiceTest {
         variante.setId(varianteId);
         variante.setProducto(producto);
         variante.setPrecioAdicional(BigDecimal.ZERO);
+
+        // El costo del envío lo decide EnvioService (tiene sus propios tests).
+        // Acá se simula lo que responde para cada tipo de entrega.
+        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.RETIRO_LOCAL), any(), any(), any()))
+                .thenReturn(BigDecimal.ZERO);
+        lenient().when(envioService.costoParaPedido(eq(TipoEntrega.ENVIO_DOMICILIO), any(), any(), any()))
+                .thenReturn(new BigDecimal("12000"));
+    }
+
+    @Test
+    void crearPedido_elCostoDeEnvioLoCalculaEnvioServiceConElDestinoDelPedido() {
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
+        when(varianteRepository.findById(varianteId)).thenReturn(Optional.of(variante));
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        List<ItemPedidoRequest> items = List.of(new ItemPedidoRequest(varianteId, 1));
+
+        PedidoResponseDTO response = pedidoService.crearPedido(usuarioId,
+                new CrearPedidoRequest(TipoEntrega.ENVIO_DOMICILIO, direccionId, null, items));
+
+        verify(envioService).costoParaPedido(TipoEntrega.ENVIO_DOMICILIO, "Chubut", "9200", items);
+        assertEquals(0, new BigDecimal("12000").compareTo(response.costoEnvio()));
+        assertEquals(0, new BigDecimal("62000").compareTo(response.total()));
+    }
+
+    // Un destino fuera de zona se rechaza ANTES de reservar stock: si se
+    // reservara primero, el rechazo dejaría unidades retenidas hasta que la
+    // transacción se deshaga.
+    @Test
+    void crearPedido_fueraDeCobertura_seRechazaSinReservarStock() {
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(direccionRepository.findById(direccionId)).thenReturn(Optional.of(direccion));
+        when(envioService.costoParaPedido(eq(TipoEntrega.ENVIO_DOMICILIO), any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("Por ahora enviamos a domicilio solo a ..."));
+
+        assertThrows(IllegalArgumentException.class, () -> pedidoService.crearPedido(usuarioId,
+                new CrearPedidoRequest(TipoEntrega.ENVIO_DOMICILIO, direccionId, null,
+                        List.of(new ItemPedidoRequest(varianteId, 1)))));
+
+        verify(inventarioService, never()).reservarStock(any(), anyInt(), any());
+        verify(pedidoRepository, never()).save(any());
     }
 
     @Test

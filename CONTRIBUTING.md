@@ -508,6 +508,7 @@ En `tierra-backend/` hay scripts que comprueban el comportamiento de la API cont
 | `probar-permisos.ps1` | Las reglas por endpoint y la distinción Administrador / Operador, con el cliente entrando por código y el equipo por contraseña |
 | `probar-pedidos.ps1` | Que el usuario del pedido salga de la sesión y que el retiro en local no cobre envío. Con la tarea 9 (checkout sin cuenta) se reemplaza por `probar-checkout.ps1` |
 | `probar-catalogo.ps1` | El catálogo comparado con lo que hay en la base: categorías y marcas, y la búsqueda de productos (paginación, orden, subcategorías, texto sin tildes, talle y color con stock, filtros combinados, parámetros inválidos y precio por variante) |
+| `probar-envios.ps1` | La cotización de envío: retiro sin costo, las provincias de la zona sin importar tildes, fuera de zona con oferta de retiro, datos inválidos, CSRF, y que el pedido cobre exactamente lo que dijo la cotización |
 | `probar-webhook.ps1` | La notificación de pago de Mercado Pago: rechaza una firma falsa, concilia un pago de prueba y no lo procesa dos veces. Recibe el número de operación de un pago hecho con credenciales de prueba (`-PagoId`) |
 
 `probar-comun.ps1` no se ejecuta solo: tiene las funciones que comparten los demás. Los scripts leen la base a través del contenedor `tierra-postgres`, así que Docker tiene que estar corriendo.

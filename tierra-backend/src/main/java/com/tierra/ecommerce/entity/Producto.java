@@ -47,4 +47,20 @@ public class Producto {
 
     @Column(name = "creado_en", nullable = false)
     private LocalDateTime creadoEn = LocalDateTime.now();
+
+    // Peso y medidas del producto YA EMBALADO, listo para despachar. Los pide
+    // Andreani para cotizar y para crear el envío (decisión 0006). Pueden
+    // faltar mientras Tierra no los cargue: hoy los envíos tienen un costo
+    // fijo y no se usan.
+    @Column(name = "peso_gramos")
+    private Integer pesoGramos;
+
+    @Column(name = "alto_cm")
+    private Integer altoCm;
+
+    @Column(name = "ancho_cm")
+    private Integer anchoCm;
+
+    @Column(name = "largo_cm")
+    private Integer largoCm;
 }

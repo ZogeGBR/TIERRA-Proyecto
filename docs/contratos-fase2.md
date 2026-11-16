@@ -16,7 +16,7 @@ Convenciones para todos los endpoints:
 | `GET /api/productos/filtros` | 6 | ✅ |
 | `GET /api/productos/{id}` | 6 | ✅ (agrega el precio por variante) |
 | `POST /api/checkout` | 9 | pendiente |
-| `POST /api/envios/cotizacion` | 10 | pendiente |
+| `POST /api/envios/cotizacion` | 10 | ✅ |
 | `GET /api/pedidos/mios` | 19 | pendiente |
 | `GET /api/cuenta/datos-entrega` | 22 | pendiente |
 | `GET /api/productos/mas-vendidos` | — | pendiente |
@@ -116,3 +116,39 @@ El detalle de un producto activo. Un producto inactivo o inexistente da 404, y u
 
 - `variantes[].precio` es el precio de esa variante: el del producto más el adicional de la variante. Es el mismo cálculo con el que el backend cobra, así que el carrito tiene que guardar este valor y no el `precio` del producto.
 - `variantes[].stock` son las unidades disponibles: stock menos lo reservado. Si `controlaStock` es `false`, la variante siempre está disponible y `stock` no significa nada (viene el entero más grande de Java, 2147483647).
+
+---
+
+## Envíos
+
+### `POST /api/envios/cotizacion` — público (con token CSRF, como todo POST)
+
+El costo del envío **antes de pagar**. Informa, no cobra: el checkout vuelve a calcularlo con el mismo código al crear el pedido, así que lo que se muestra y lo que se cobra no pueden diferir. Detrás hay un cotizador intercambiable: hoy un monto fijo, después Andreani (decisión 0006). El contrato no cambia al integrar Andreani.
+
+```json
+{
+  "tipoEntrega": "ENVIO_DOMICILIO",
+  "provincia": "Chubut",
+  "codigoPostal": "9200",
+  "items": [{ "varianteId": "e000…0003", "cantidad": 1 }]
+}
+```
+
+| Campo | Obligatorio | Notas |
+|---|---|---|
+| `tipoEntrega` | Sí | `ENVIO_DOMICILIO` o `RETIRO_LOCAL` |
+| `provincia` | Con envío | Se compara sin tildes ni mayúsculas |
+| `codigoPostal` | Con envío | 4 números |
+| `items` | Sí | Entre 1 y 50. El costo con Andreani va a depender del peso y el valor de lo que se compra |
+
+Respuestas (200):
+
+```json
+{ "cubierto": true,  "costo": 12000, "mensaje": null }
+{ "cubierto": true,  "costo": 0,     "mensaje": null }
+{ "cubierto": false, "costo": null,  "mensaje": "Por ahora enviamos a domicilio solo a Neuquén, Río Negro, Chubut y Santa Cruz. Podés retirar tu compra en el local." }
+```
+
+- Con `RETIRO_LOCAL` siempre es `cubierto: true` y `costo: 0`, sin provincia ni código postal.
+- **Fuera de la zona no es un error:** 200 con `cubierto: false`. La pantalla tiene que ofrecer el retiro. En cambio, un pedido que llegue igual con envío a una provincia fuera de zona se rechaza con 400 y el mismo mensaje.
+- Errores: 400 sin provincia o con un código postal que no tiene 4 números, sin ítems o con un tipo de entrega desconocido; 404 si una variante no existe o es de un producto inactivo; **503** si el correo no pudo cotizar (*"No pudimos calcular el costo del envío. Probá de nuevo en unos minutos."*). Hoy el cotizador fijo nunca da 503; con Andreani puede pasar.

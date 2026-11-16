@@ -13,7 +13,17 @@ Write-Host "`n0. La cookie CSRF se genera con cualquier GET" -ForegroundColor Cy
 $s = NuevaSesion
 Condicion ([bool](Token $s)) "XSRF-TOKEN presente"
 
-Write-Host "`n1. Login y logout" -ForegroundColor Cyan
+Write-Host "`n1. Sin sesion, nada abre una sesion" -ForegroundColor Cyan
+# El frontend pide /api/auth/yo al cargar cada pagina: un 401 anonimo no
+# tiene que dejar una sesion en el servidor (antes la dejaba el request cache).
+$anonimo = NuevaSesion
+foreach ($ruta in @("/api/auth/yo", "/api/pedidos/mios", "/api/cuenta/datos-entrega", "/api/admin/sesion", "/api/ruta-inventada")) {
+    Verificar (Pedir $anonimo GET $ruta) 401 "GET $ruta sin sesion"
+}
+$cookieSesion = $anonimo.Cookies.GetCookies($base) | Where-Object { $_.Name -eq "JSESSIONID" }
+Condicion (-not $cookieSesion) "ninguno de esos 401 abrio una sesion (sin cookie JSESSIONID)"
+
+Write-Host "`n2. Login y logout" -ForegroundColor Cyan
 Verificar (Pedir $s GET "/api/auth/yo") 401 "/yo sin sesion"
 Verificar (EntrarComoEquipo $s "admin@tierra.esquel") 200 "login de admin@ por /equipo/login"
 $yo = Pedir $s GET "/api/auth/yo"
@@ -22,7 +32,7 @@ Condicion ($yo.Texto -like '*"rol":"ADMIN"*') "la sesion es de ADMIN"
 Verificar (Pedir $s POST "/api/auth/logout") 204 "logout"
 Verificar (Pedir $s GET "/api/auth/yo") 401 "/yo despues del logout"
 
-Write-Host "`n2. Credenciales incorrectas: el mismo mensaje en todos los casos" -ForegroundColor Cyan
+Write-Host "`n3. Credenciales incorrectas: el mismo mensaje en todos los casos" -ForegroundColor Cyan
 $mal = Pedir $s POST "/api/auth/equipo/login" '{"email":"mostrador@tierra.esquel","password":"incorrecta123"}'
 $nadie = Pedir $s POST "/api/auth/equipo/login" '{"email":"noexiste@tierra.esquel","password":"incorrecta123"}'
 $cliente = Pedir $s POST "/api/auth/equipo/login" '{"email":"test@tierra.esquel","password":"tierra2026"}'
@@ -34,14 +44,14 @@ $m2 = MensajeDe $nadie
 $m3 = MensajeDe $cliente
 Condicion (($m1 -eq $m2) -and ($m1 -eq $m3)) "el mensaje es identico en los tres casos"
 
-Write-Host "`n3. Bloqueo por intentos fallidos (5 intentos, 15 minutos)" -ForegroundColor Cyan
+Write-Host "`n4. Bloqueo por intentos fallidos (5 intentos, 15 minutos)" -ForegroundColor Cyan
 Write-Host "   El quinto fallido bloquea: esa respuesta todavia es 401, y el" -ForegroundColor DarkGray
 Write-Host "   bloqueo rige desde el pedido siguiente." -ForegroundColor DarkGray
 1..4 | ForEach-Object { Pedir $s POST "/api/auth/equipo/login" '{"email":"mostrador@tierra.esquel","password":"mal"}' | Out-Null }
 Verificar (EntrarComoEquipo $s "mostrador@tierra.esquel") 423 "contrasena correcta sobre la cuenta bloqueada"
 Verificar (EntrarComoEquipo (NuevaSesion) "admin@tierra.esquel") 200 "otra cuenta del equipo sigue entrando"
 
-Write-Host "`n4. CSRF y webhook" -ForegroundColor Cyan
+Write-Host "`n5. CSRF y webhook" -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Method POST -Uri "$base/api/auth/equipo/login" -ContentType "application/json" `
         -Body '{"email":"admin@tierra.esquel","password":"tierra2026"}' -UseBasicParsing | Out-Null

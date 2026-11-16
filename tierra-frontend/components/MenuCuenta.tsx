@@ -3,15 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, LogOut } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { User, LogOut, Package } from "lucide-react";
+import { useAuth, esCliente } from "@/context/AuthContext";
 
 // Reemplaza al botón de usuario que antes no hacía nada.
 //
 // Sin sesión es un enlace a /login (ingreso por código) que se acuerda de
 // dónde estaba la persona, para devolverla ahí después de entrar. Con sesión,
-// un menú con su nombre y la opción de salir. "Mis pedidos" (clientes) vuelve
-// con la tarea 19: ver la nota en Header.tsx.
+// un menú con su nombre, "Mis pedidos" (clientes) y la opción de salir.
 export function MenuCuenta() {
   const { usuario, cargando, cerrarSesion } = useAuth();
   const router = useRouter();
@@ -103,6 +102,20 @@ export function MenuCuenta() {
             <p className="font-medium">Hola, {primerNombre}</p>
             <p className="text-xs text-tierra-terracota-oscuro/60 truncate">{usuario.email}</p>
           </div>
+
+          {esCliente(usuario) && (
+            <Link
+              href="/cuenta/pedidos"
+              role="menuitem"
+              onClick={() => setAbierto(false)}
+              className="w-full text-left px-4 py-2 flex items-center gap-2
+                         transition-colors hover:bg-tierra-crema
+                         focus:outline-none focus:bg-tierra-crema"
+            >
+              <Package size={14} />
+              Mis pedidos
+            </Link>
+          )}
 
           <button
             type="button"

@@ -313,6 +313,17 @@ class PagoServiceTest {
             when(preferenceClient.create(any(PreferenceRequest.class))).thenReturn(preference);
         }
 
+        // "Pagar" en Mis pedidos: si Mercado Pago no responde, 503 con su
+        // código (no un 500) y el pedido sigue pendiente para reintentar.
+        @Test
+        void siMercadoPagoNoRespondeEsLinkNoDisponibleYElPedidoSiguePendiente() throws Exception {
+            when(preferenceClient.create(any(PreferenceRequest.class))).thenThrow(new MPException("caído"));
+
+            assertThrows(com.tierra.ecommerce.exception.LinkDePagoNoDisponibleException.class,
+                    () -> pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId()));
+            assertEquals(EstadoPedido.PENDIENTE, pedido.getEstado());
+        }
+
         @Test
         void generaLinkSeguroYConVencimiento() throws Exception {
             var respuesta = pagoService.crearPreferenciaPago(pedido.getId(), usuario.getId());

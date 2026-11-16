@@ -17,7 +17,7 @@ Convenciones para todos los endpoints:
 | `GET /api/productos/{id}` | 6 | ✅ (agrega el precio por variante) |
 | `POST /api/checkout` | 9 | ✅ |
 | `POST /api/envios/cotizacion` | 10 | ✅ |
-| `GET /api/pedidos/mios` | 19 | pendiente |
+| `GET /api/pedidos/mios` | 19 | ✅ |
 | `GET /api/cuenta/datos-entrega` | 22 | ✅ |
 | `DELETE /api/cuenta/datos-entrega` | 22 | ✅ |
 | `GET /api/productos/mas-vendidos` | — | pendiente |
@@ -220,6 +220,51 @@ Datos guardados para la próxima compra (tarea 22, decisión 0005). Solo para cl
 ### `DELETE /api/cuenta/datos-entrega` — cliente con sesión (con token CSRF)
 
 Borra el teléfono, el DNI y la dirección guardada. Responde 204, también si no había nada. El nombre queda, porque es el de la cuenta. **No modifica ningún pedido**: cada pedido tiene su propia copia del contacto y la dirección.
+
+---
+
+## Pedidos
+
+### `GET /api/pedidos/mios` — cliente con sesión
+
+El historial del cliente de la sesión (tarea 19). Sin sesión, 401; con la sesión del equipo, 403. Siempre los pedidos de la sesión: no hay forma de pedir los de otra persona.
+
+```json
+[
+  {
+    "id": "5d48e6a8-…",
+    "estado": "PAGADO",
+    "creadoEn": "2026-11-16T10:30:00-03:00",
+    "tipoEntrega": "ENVIO_DOMICILIO",
+    "direccionEntrega": {
+      "calle": "San Martín", "numero": "123", "piso": "2", "departamento": "B",
+      "ciudad": "Esquel", "provincia": "Chubut", "codigoPostal": "9200"
+    },
+    "contactoNombre": "Ana Pérez",
+    "contactoTelefono": "••• 3456",
+    "contactoDni": "***.***.222",
+    "subtotal": 179980.00, "descuento": 0.00, "costoEnvio": 12000.00, "total": 191980.00,
+    "items": [
+      { "nombreProducto": "Mochila Trekking 50L", "talla": "Único", "color": "Verde", "cantidad": 2, "precioUnitario": 89990.00 }
+    ]
+  }
+]
+```
+
+- **Del más nuevo al más viejo**, como máximo los 50 más recientes. Sin pedidos, `[]`.
+- **No vienen los cancelados que nunca se pagaron** (un link de pago que falló, un pedido abandonado). Un cancelado que se había pagado y se reembolsó, sí (decisión 0005).
+- **`contactoDni` y `contactoTelefono` vienen ocultos desde el backend**: el DNI con los últimos 3 números y el teléfono con los últimos 4. El dato completo nunca llega al navegador. El nombre y la dirección van completos.
+- Con retiro en el local, `direccionEntrega` y `contactoDni` vienen en `null`.
+- `items` es lo que se compró, copiado en el pedido al comprar: no cambia si después se edita el producto.
+- `creadoEn` lleva la zona horaria.
+- `estado`: `PENDIENTE`, `PAGADO`, `PREPARANDO`, `ENVIADO`, `ENTREGADO` o `CANCELADO`. Solo un `PENDIENTE` se puede pagar.
+
+### Pagar un pedido pendiente — `POST /api/pagos/pedidos/{id}/preferencia`
+
+Lo usa el botón "Pagar" del historial. Exige sesión y que el pedido sea de quien lo pide (si no, 404, igual que si no existiera). Devuelve `{ preferenceId, initPoint, expiraEn }`.
+
+- 409 si el pedido ya no se puede pagar (pagado, cancelado o vencido): *"Este pedido ya no se puede pagar."* o *"Venció el tiempo para pagar este pedido. Volvé a armarlo."*
+- **503 con `codigo: "LINK_DE_PAGO_NO_DISPONIBLE"`** si Mercado Pago no devolvió el link. El pedido sigue pendiente y se puede reintentar. Antes de la tarea 19 este caso respondía 500.
 
 ---
 

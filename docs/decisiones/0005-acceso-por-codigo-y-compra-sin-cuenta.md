@@ -164,6 +164,8 @@ Los pedidos se asocian por email, y un email mal escrito asocia un pedido a otra
 **Dónde se aplica:**
 
 - **Fase 2:** en el historial de pedidos (`GET /api/pedidos/mios`). El ocultamiento se hace en el backend, al armar la respuesta: el dato completo nunca llega al navegador.
+
+**Qué pedidos muestra el historial (tarea 19).** Todos los del cliente, del más nuevo al más viejo, **menos los cancelados que nunca se pagaron**: un link de pago que falló en el checkout (el cliente vio "no se hizo ningún cobro") o un pedido abandonado sin pagar. Para el cliente no fueron compras, y mostrarlos llenaría el historial de "Cancelado". Un pedido cancelado que sí se había pagado (y se reembolsó, en la Fase 3) aparece. Como máximo los 50 más recientes.
 - **Fase 3:** en los emails de confirmación y de despacho. Tienen el mismo problema: si el email está mal escrito, le llegan a otra persona.
 - **El panel del equipo** muestra todo completo: lo necesita para despachar.
 
@@ -364,7 +366,7 @@ La inactividad se cuenta desde la última petición: cada vez que la persona usa
 | `POST /api/auth/registro` | — | **Se elimina**, con `RegistroRequest` y `AuthService.registrar` (tarea 3) |
 | `POST /api/pedidos` | — | **Se elimina** (tarea 9) |
 | `GET /api/pedidos/mios` | Rol `CLIENTE` | Nuevo (tarea 19). Filtra por el usuario de la sesión, nunca por un id que mande el navegador |
-| `POST /api/pagos/pedidos/*/preferencia` | Con sesión | Sin cambios. Lo usa el botón "Pagar" del historial; `PagoService` ya verifica que el pedido sea del usuario |
+| `POST /api/pagos/pedidos/*/preferencia` | Con sesión | Lo usa el botón "Pagar" del historial; `PagoService` ya verifica que el pedido sea del usuario. Desde la tarea 19, si Mercado Pago no devuelve el link responde 503 con `LINK_DE_PAGO_NO_DISPONIBLE` en vez de 500 |
 | `GET /api/cuenta/datos-entrega` | Rol `CLIENTE` | Nuevo (tarea 22). Devuelve los datos guardados del cliente de la sesión |
 | `DELETE /api/cuenta/datos-entrega` | Rol `CLIENTE` | Nuevo (tarea 22). Borra los datos guardados; no toca los pedidos |
 | `GET /api/auth/yo`, `POST /api/auth/logout` | Con sesión | Sin cambios |
@@ -473,6 +475,7 @@ Los scripts de verificación cambian en los mismos Pull Requests que los rompen:
 | `V8` | 3 | Clientes sin contraseña y restricción `chk_usuarios_metodo_acceso` |
 | `V10` | 9 | `contacto_nombre`, `contacto_telefono` y `contacto_dni` en `pedidos`, más `envio_piso` y `envio_departamento` para Andreani (0006). Era la `V9`, que la tomó la tarea 10 al mergearse antes |
 | `V11` | 22 | `piso` y `departamento` en `direcciones`, y un índice único por cliente: una sola dirección guardada, garantizado por la base |
+| `V12` | 19 | Copia del nombre del producto, el talle y el color en `pedido_items`, como ya se copiaba el precio: el historial muestra lo que se compró aunque después se edite el producto |
 
 Los números son una reserva: el definitivo se confirma al mergear, y nunca se mergea un número menor después de uno mayor.
 

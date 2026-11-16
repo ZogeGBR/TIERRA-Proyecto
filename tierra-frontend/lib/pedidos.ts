@@ -1,5 +1,7 @@
 // Presentación del historial de pedidos (tarea 19). Lógica pura, sin React.
 
+import type { DireccionEntrega } from "./types";
+
 // Estados del backend (enum EstadoPedido).
 const ETIQUETAS: Record<string, string> = {
   PENDIENTE: "Pendiente de pago",
@@ -38,6 +40,20 @@ export function tonoDeEstado(estado: string): TonoEstado {
 // que sea del cliente y que todavía se pueda pagar (409 si no).
 export function sePuedePagar(estado: string): boolean {
   return estado.toUpperCase() === "PENDIENTE";
+}
+
+// "San Martín 123, piso 2, depto. B, Esquel, Chubut (9200)". Piso y
+// departamento son opcionales (decisión 0006).
+export function textoDeDireccion(d: DireccionEntrega): string {
+  return [
+    [d.calle, d.numero].map((x) => x?.trim()).filter(Boolean).join(" "),
+    d.piso?.trim() && `piso ${d.piso.trim()}`,
+    d.departamento?.trim() && `depto. ${d.departamento.trim()}`,
+    d.ciudad,
+    d.codigoPostal ? `${d.provincia} (${d.codigoPostal})` : d.provincia
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 // "12 de octubre de 2026". Si la fecha no se entiende, se devuelve vacío en

@@ -69,8 +69,11 @@ function esPagina(x: unknown): x is Pagina<ProductoResumen> {
   );
 }
 
-// Estado que usamos para "el backend todavía no tiene este endpoint".
-export const NO_DISPONIBLE = 501;
+function esTipoAlquiler(x: unknown): x is TipoAlquiler {
+  if (typeof x !== "object" || x === null) return false;
+  const t = x as Record<string, unknown>;
+  return typeof t.id === "string" && typeof t.nombre === "string" && typeof t.precioDia === "number" && Number.isFinite(t.precioDia) && t.precioDia > 0;
+}
 
 function errorDeFormato(que: string): ApiError {
   return new ApiError(502, `La respuesta del servidor (${que}) no tiene el formato esperado. El backend todavía puede no soportar esta consulta.`);
@@ -125,23 +128,7 @@ async function asegurarTokenCsrf(): Promise<string | null> {
   return leerTokenCsrf();
 }
 
-// `publico: true` marca un endpoint público que el backend TODAVÍA NO
-// implementa. Mientras tanto, la ruta puede responder:
-//   - 401 "Necesitás iniciar sesión", si cae en el `anyRequest().denyAll()`
-//     de SecurityConfig;
-//   - 404 "La dirección solicitada no existe", si cae bajo una regla pública
-//     (por ejemplo /api/alquiler/tipos, que entra en /api/alquiler/**).
-// Sin esta marca la persona vería "tu sesión venció" o "la dirección no
-// existe", cuando en realidad falta implementar el endpoint. El 404 se
-// traduce sólo en los GET: en un POST un 404 puede ser un error real de
-// negocio y su mensaje tiene que llegar. Cuando el endpoint se implementa,
-// se le saca la marca: sus 401 y 403 pasan a ser errores reales.
-async function apiFetch<T>(path: string, options?: RequestInit & { publico?: boolean }): Promise<T> {
-  const publico = options?.publico === true;
-  if (options) {
-    options = { ...options };
-    delete (options as { publico?: boolean }).publico;
-  }
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options?.headers as Record<string, string> | undefined)
@@ -177,10 +164,6 @@ async function apiFetch<T>(path: string, options?: RequestInit & { publico?: boo
   }
 
   if (!res.ok) {
-    const rutaFaltante = res.status === 401 || res.status === 403 || (res.status === 404 && esMetodoSeguro(options?.method));
-    if (publico && rutaFaltante) {
-      throw new ApiError(NO_DISPONIBLE, "Esta función todavía no está disponible. Probá de nuevo más tarde.");
-    }
     const cuerpo = await res.json().catch(() => null);
     throw new ApiError(
       res.status,
@@ -281,10 +264,16 @@ export const api = {
     borrarDatosEntrega: () => apiFetch<void>("/cuenta/datos-entrega", { method: "DELETE" })
   },
   // Solo la lista de tipos de equipo con su precio por día, para el
-  // estimador. SIN disponibilidad ni reservas (decisión 0001): el sistema no
-  // la conoce ni la promete, y api.alquiler.reservar se eliminó.
+  // estimador (tarea 20). SIN disponibilidad ni reservas (decisión 0001): el
+  // sistema no la conoce ni la promete, y api.alquiler.reservar se eliminó.
+  // El estimador multiplica precioDia: un tipo sin un precio válido se
+  // descarta en vez de mostrar NaN.
   alquiler: {
-    tipos: () => apiFetch<TipoAlquiler[]>("/alquiler/tipos", { publico: true })
+    tipos: async (): Promise<TipoAlquiler[]> => {
+      const respuesta = await apiFetch<unknown>("/alquiler/tipos");
+      if (!Array.isArray(respuesta)) throw errorDeFormato("tipos de alquiler");
+      return respuesta.filter(esTipoAlquiler);
+    }
   },
   pagos: {
     // Para "Pagar" en el historial (pedido pendiente) y la página de pago

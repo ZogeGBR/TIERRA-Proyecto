@@ -21,7 +21,7 @@ Convenciones para todos los endpoints:
 | `GET /api/cuenta/datos-entrega` | 22 | ✅ |
 | `DELETE /api/cuenta/datos-entrega` | 22 | ✅ |
 | `GET /api/productos/mas-vendidos` | — | ✅ |
-| `GET /api/alquiler/tipos` | 20 | pendiente |
+| `GET /api/alquiler/tipos` | 20 | ✅ |
 
 ---
 
@@ -318,3 +318,28 @@ Respuestas (200):
 - Con `RETIRO_LOCAL` siempre es `cubierto: true` y `costo: 0`, sin provincia ni código postal.
 - **Fuera de la zona no es un error:** 200 con `cubierto: false`. La pantalla tiene que ofrecer el retiro. En cambio, un pedido que llegue igual con envío a una provincia fuera de zona se rechaza con 400 y el mismo mensaje.
 - Errores: 400 sin provincia o con un código postal que no tiene 4 números, sin ítems o con un tipo de entrega desconocido; 404 si una variante no existe o es de un producto inactivo; **503** si el correo no pudo cotizar (*"No pudimos calcular el costo del envío. Probá de nuevo en unos minutos."*). Hoy el cotizador fijo nunca da 503; con Andreani puede pasar.
+
+---
+
+## Alquiler
+
+Tierra Rental no toma reservas en línea (decisión 0001): la página de alquiler estima un precio y arma un mensaje de WhatsApp para consultar. El sistema no conoce ni promete la disponibilidad.
+
+### `GET /api/alquiler/tipos` — público
+
+Los tipos de equipo para el estimador, con el precio por día de **una** unidad, ordenados por nombre:
+
+```json
+[
+  { "id": "f000…0004", "nombre": "Bastones", "precioDia": 2500.00 },
+  { "id": "f000…0001", "nombre": "Esquís", "precioDia": 12000.00 }
+]
+```
+
+- Solo aparecen los tipos **con precio** (`tipos_equipo_alquiler.precio_dia`, desde V14). Un tipo sin precio no se muestra: así se puede cargar antes de tener precio, o sacar de la página sin borrarlo. La base no acepta un precio en cero o negativo.
+- Sin disponibilidad, unidades ni depósito: el precio sale del tipo, no de las unidades (`equipos_alquiler`) ni de las tarifas por temporada (`tarifas_temporada`), que son del módulo congelado.
+- Lista vacía si no hay ningún tipo con precio. La pantalla muestra *"Todavía no hay equipos cargados. Escribinos y te contamos."*
+- El estimado lo calcula el frontend: precio por día × cantidad × días, contando el día de retiro y el de devolución (`lib/alquiler.ts`).
+- Hasta que exista el panel de la Fase 3, los tipos y sus precios se cargan directamente en la base.
+
+`GET /api/alquiler/disponibilidad` y `POST /api/alquiler/reservas` están congelados (comentados en `EquipoAlquilerController`). `SecurityConfig` solo deja público `GET /api/alquiler/tipos`: lo demás bajo `/api/alquiler` cae en el cierre por denegación (401 sin sesión, 403 con cualquier sesión).

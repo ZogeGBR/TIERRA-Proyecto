@@ -12,7 +12,7 @@ import { obtenerLinkDePago } from "../lib/iniciarPago";
 import { diasDeAlquiler, estimarPrecio, enlaceWhatsapp, armarMensajeConsulta } from "../lib/alquiler";
 import { etiquetaDeEstado, tonoDeEstado, sePuedePagar, textoDeDireccion, fechaLarga } from "../lib/pedidos";
 import { textoDeError, esEmailNoUsable, esErrorDeRed, esErrorDelServidor } from "../lib/errores";
-import { ApiError, api, NO_DISPONIBLE } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { filtrosDeLaUrl, queryDeFiltros, cantidadDeFiltros } from "../lib/catalogo";
 import { normalizarRanking, pestaniasConProductos, LIMITE_RANKING, MINIMO_RANKING } from "../lib/rankings";
 
@@ -235,28 +235,12 @@ test("ranking de la home: se valida lo que llega y se oculta con menos de 3 prod
 });
 
 // ---- Cruce con el backend develop ----
-test("textoDeError: 423 y 501 usan el mensaje del backend", () => {
+test("textoDeError: 423 usa el mensaje del backend", () => {
   assert.equal(textoDeError(new ApiError(423, "Cuenta bloqueada 15 min"), "x"), "Cuenta bloqueada 15 min");
-  assert.match(textoDeError(new ApiError(501, "Esta función todavía no está disponible."), "x"), /todavía no está disponible/);
 });
 
-test("ruta pública inexistente (401 de denyAll) NO se muestra como 'sesión venció'", async () => {
-  const { api } = await import("../lib/api");
-  const original = globalThis.fetch;
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ mensaje: "Necesitás iniciar sesión para hacer esto" }), { status: 401 })) as typeof fetch;
-  try {
-    await assert.rejects(
-      api.alquiler.tipos(),
-      (e: unknown) => e instanceof ApiError && e.status === 501 && !/sesión/i.test(textoDeError(e, "x"))
-    );
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
-// El checkout ya existe: sus errores llegan tal cual, con el código que
-// manda el backend, para que la pantalla reaccione según el motivo.
+// Los errores del checkout llegan tal cual, con el código que manda el
+// backend, para que la pantalla reaccione según el motivo.
 test("checkout: los errores del backend llegan con su código", async () => {
   const original = globalThis.fetch;
   const responder = (status: number, cuerpo: object) =>
@@ -274,7 +258,7 @@ test("checkout: los errores del backend llegan con su código", async () => {
       api.checkout.confirmar({} as never),
       (e: unknown) => e instanceof ApiError && /ningún cobro/.test(textoDeError(e, "x"))
     );
-    // Un 403 (por ejemplo, sin token CSRF) ya no se disfraza de "todavía no disponible".
+    // Un 403 (por ejemplo, sin token CSRF) llega como 403.
     globalThis.fetch = responder(403, { mensaje: "Acceso denegado" });
     await assert.rejects(api.checkout.confirmar({} as never), (e: unknown) => e instanceof ApiError && e.status === 403);
   } finally {
@@ -282,21 +266,30 @@ test("checkout: los errores del backend llegan con su código", async () => {
   }
 });
 
-// Un endpoint público que el backend todavía no implementa: según la regla de
-// SecurityConfig en la que caiga responde 401 o 404. En un GET los dos se
-// traducen a "todavía no disponible".
-test("endpoints públicos que todavía no existen", async () => {
+// Tipos de alquiler para el estimador (tarea 20). El estimador multiplica
+// precioDia: lo que no tenga un precio válido se descarta.
+test("alquiler: los tipos del backend, sin los que no tienen un precio válido", async () => {
   const fetchOriginal = globalThis.fetch;
-  const responder = (status: number, mensaje: string) =>
-    (async () => new Response(JSON.stringify({ mensaje }), { status })) as typeof fetch;
+  const responder = (status: number, cuerpo: unknown) =>
+    (async () => new Response(JSON.stringify(cuerpo), { status })) as typeof fetch;
   try {
-    globalThis.fetch = responder(404, "La dirección solicitada no existe");
-    await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === NO_DISPONIBLE);
-    globalThis.fetch = responder(401, "Necesitás iniciar sesión para hacer esto");
-    await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === NO_DISPONIBLE);
-    // Un endpoint que NO es público conserva su 401 (la sesión venció de verdad).
-    globalThis.fetch = responder(401, "Necesitás iniciar sesión para hacer esto");
-    await assert.rejects(api.pedidos.mios(), (e: unknown) => e instanceof ApiError && e.status === 401);
+    globalThis.fetch = responder(200, [
+      { id: "a", nombre: "Bastones", precioDia: 2500 },
+      { id: "b", nombre: "Esquís", precioDia: 12000.5 },
+      { id: "c", nombre: "Sin precio", precioDia: null },
+      { id: "d", nombre: "Precio en texto", precioDia: "6000" },
+      { id: "e", nombre: "En cero", precioDia: 0 },
+      null
+    ]);
+    assert.deepEqual(await api.alquiler.tipos(), [
+      { id: "a", nombre: "Bastones", precioDia: 2500 },
+      { id: "b", nombre: "Esquís", precioDia: 12000.5 }
+    ]);
+    globalThis.fetch = responder(200, { contenido: [] });
+    await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === 502);
+    // Un error del backend llega con su mensaje, sin disfrazarse de otra cosa.
+    globalThis.fetch = responder(500, { mensaje: "Error interno del servidor" });
+    await assert.rejects(api.alquiler.tipos(), (e: unknown) => e instanceof ApiError && e.status === 500 && textoDeError(e, "x") === "Error interno del servidor");
   } finally {
     globalThis.fetch = fetchOriginal;
   }

@@ -19,7 +19,7 @@ $s = NuevaSesion
 Write-Host " El catalogo tiene que seguir siendo publico:"
 Verificar (Pedir $s GET "/api/productos?categoriaId=c0000000-0000-0000-0000-000000000001") 200 "GET /api/productos"
 Verificar (Pedir $s GET "/api/productos/d0000000-0000-0000-0000-000000000001") 200 "GET /api/productos/{id}"
-Verificar (Pedir $s GET "/api/alquiler/disponibilidad?tipoId=a0000000-0000-0000-0000-000000000001&fechaInicio=2026-07-10&fechaFin=2026-07-15") 200 "GET /api/alquiler/disponibilidad"
+Verificar (Pedir $s GET "/api/alquiler/tipos") 200 "GET /api/alquiler/tipos"
 Write-Host " Los dos canales de acceso son publicos:"
 Verificar (Pedir $s POST "/api/auth/codigo" '{"email":"nadie@tierra.esquel"}') 200 "POST /api/auth/codigo"
 Verificar (Pedir $s POST "/api/auth/codigo/verificar" '{"email":"nadie@tierra.esquel","codigo":"123456"}') 401 "POST /api/auth/codigo/verificar (codigo invalido)"
@@ -71,6 +71,9 @@ Write-Host " Las rutas del registro, del login viejo y del alta de pedidos con s
 Verificar (Pedir (NuevaSesion) POST "/api/auth/login" '{"email":"admin@tierra.esquel","password":"tierra2026"}') 401 "POST /api/auth/login"
 Verificar (Pedir (NuevaSesion) POST "/api/auth/registro" '{"nombre":"X","email":"x@x.com","password":"12345678"}') 401 "POST /api/auth/registro"
 Verificar (Pedir (NuevaSesion) POST "/api/pedidos" "{""tipoEntrega"":""RETIRO_LOCAL"",""items"":$items}") 401 "POST /api/pedidos"
+Write-Host " Del alquiler solo los tipos son publicos: disponibilidad y reservas estan congeladas (decision 0001):"
+Verificar (Pedir (NuevaSesion) GET "/api/alquiler/disponibilidad?tipoId=f0000000-0000-0000-0000-000000000001&fechaInicio=2026-07-10&fechaFin=2026-07-15") 401 "GET /api/alquiler/disponibilidad"
+Verificar (Pedir (NuevaSesion) POST "/api/alquiler/reservas" "{}") 401 "POST /api/alquiler/reservas"
 
 ReiniciarCliente "test@tierra.esquel"
 CancelarPedidosDePrueba

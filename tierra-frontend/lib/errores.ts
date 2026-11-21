@@ -21,8 +21,6 @@ export function textoDeError(e: unknown, porDefecto: string): string {
       return "No tenés permiso para hacer esto.";
     case 423:
       return e.message || "La cuenta está bloqueada por intentos fallidos. Probá más tarde.";
-    case 501:
-      return e.message;
     case 429:
       return "Hiciste muchos intentos seguidos. Esperá unos minutos y probá de nuevo.";
     default:

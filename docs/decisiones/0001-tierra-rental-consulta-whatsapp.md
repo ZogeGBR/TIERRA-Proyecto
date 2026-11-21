@@ -38,11 +38,12 @@ El sistema **no conoce la disponibilidad real** del equipo, no la calcula y no l
 
 - Selector de fechas y cantidad en la página de alquiler, que **solo sirve para armar el mensaje**.
 - Generación del enlace de WhatsApp: `https://wa.me/<numero>?text=<mensaje codificado>`, con el texto armado en el cliente.
-- Listado de los tipos de equipo disponibles para alquilar, **sin estado de disponibilidad**.
+- Listado de los tipos de equipo disponibles para alquilar, **sin estado de disponibilidad**. Lo da `GET /api/alquiler/tipos` (tarea 20), con un precio por día por tipo para el estimado: la columna `precio_dia` de `tipos_equipo_alquiler` (V14). No se usan el precio de cada unidad ni las tarifas por temporada, que son del módulo congelado.
 
 ### Qué se congela
 
 - `POST /api/alquiler/reservas` — se comenta el `@PostMapping` con una nota explicando por qué. **No construir encima.**
+- `GET /api/alquiler/disponibilidad` — calculaba qué unidades estaban libres en un rango de fechas, contradiciendo "no conoce la disponibilidad". Se comenta igual que el anterior (tarea 20). `SecurityConfig` solo deja público `GET /api/alquiler/tipos`; lo demás bajo `/api/alquiler` cae en el `denyAll()`.
 - `ReservaAlquilerService`, `DisponibilidadAlquilerService`, `DevolucionAlquiler`, `TarifaTemporada`, `MantenimientoEquipo`.
 
 No se borra nada. El modelo está bien hecho, el constraint `EXCLUDE` de no-solapamiento es la forma correcta de garantizar que dos reservas no se pisen, y todo eso sirve tal cual si en algún momento se vende el módulo como anexo. Queda congelado y documentado, no eliminado.
@@ -55,7 +56,7 @@ No se borra nada. El modelo está bien hecho, el constraint `EXCLUDE` de no-sola
 ### Qué hace falta del cliente
 
 - El número de WhatsApp al que van las consultas, y quién las atiende.
-- El listado de tipos de equipo y cantidades, para poblar el selector.
+- El listado de tipos de equipo y el precio por día de cada uno, para poblar el selector. Hasta el panel de la Fase 3 se cargan en la base; un tipo sin precio no aparece.
 
 ### Sobre el consentimiento de WhatsApp
 

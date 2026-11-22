@@ -19,12 +19,14 @@
 
     <properties>
         <java.version>17</java.version>
-        <!-- Lombok >= 1.18.36 es la primera versión compatible con Java 23:
-             desde Java 23, javac dejó de correr el procesamiento de
-             anotaciones por defecto, y versiones viejas de Lombok no
-             se adaptaron a ese cambio. Sin esto, Lombok no genera
-             ningún getter/setter y todo el proyecto falla al compilar. -->
-        <lombok.version>1.18.36</lombok.version>
+        <!-- El proyecto apunta a Java 17, pero se compila con el JDK que
+             cada uno tenga instalado, y Lombok tiene que soportar ese JDK.
+             1.18.46 soporta hasta Java 26. Con una versión vieja y un JDK
+             más nuevo, la compilación falla con "TypeTag :: UNKNOWN"
+             (1.18.36 llegaba solo hasta Java 23). Desde Java 23 javac ya
+             no corre el procesamiento de anotaciones por defecto: por eso
+             Lombok se declara también en annotationProcessorPaths. -->
+        <lombok.version>1.18.46</lombok.version>
     </properties>
 
     <dependencies>

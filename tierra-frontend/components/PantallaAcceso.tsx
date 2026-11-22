@@ -8,7 +8,7 @@ export function PantallaAcceso({ titulo, subtitulo, children }: { titulo: string
       {/* Pintura de montañas (verdes, azules y picos naranja): panorama en pantallas anchas, versión vertical en el celular. */}
       <picture>
         <source media="(min-width: 768px)" srcSet="/images/brand/login-montanas-ancho.jpg" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Dentro de <picture>, la regla de Next sobre <img> no aplica. */}
         <img
           src="/images/brand/login-montanas.jpg"
           alt=""

@@ -36,19 +36,18 @@ Las cinco etapas están integradas: cada pantalla usa el endpoint real del backe
 | Comando | Qué hace |
 |---|---|
 | `npm test` | Pruebas de la lógica pura: acceso por código, destinos seguros, validaciones, cobertura, pago pendiente, alquiler, rankings |
-| `npm run lint` | ESLint con la configuración de Next |
+| `npm run lint` | ESLint 9 con las reglas de Next (`eslint.config.mjs`), sobre todo el proyecto: también `context`, `tests` y los archivos de configuración |
 | `npm run build` | Compila para producción; tiene que terminar sin errores |
 
 ## Dependencias y `npm audit`
 
 Las versiones van fijas en `package.json` (sin `^`), así cada instalación es igual. Para actualizar, se cambia la versión a mano en un PR propio y se corre la verificación completa. **No uses `npm audit fix --force`**: instala versiones fuera de las fijadas, incluso de otra versión mayor, sin revisión.
 
-`npm audit` reporta hoy 8 avisos (1 alto y 7 moderados) que no tienen arreglo sin cambiar de versión mayor, y que no afectan al sitio:
+`npm audit` reporta hoy 2 avisos (1 alto y 1 moderado) con una sola causa, que no tiene arreglo sin cambiar de versión mayor y que no afecta al sitio:
 
 | Paquete | Por qué no afecta | Cuándo se va |
 |---|---|---|
-| `postcss` 8.4.31, el que trae Next adentro (alto) | Next lo usa al compilar, sobre nuestro propio CSS. Las fallas necesitan un CSS malicioso | Con Next 16 |
-| `minimatch` vía `@typescript-eslint` (moderado, 7 avisos encadenados) | Solo lo usa ESLint en la máquina de quien desarrolla, sobre nuestros archivos | Cuando `@typescript-eslint` publique una versión que lo actualice |
+| `postcss` 8.4.31, el que trae Next adentro (alto; npm cuenta también a `next` como moderado, por traerlo) | Next lo usa al compilar, sobre nuestro propio CSS. Las fallas necesitan un CSS malicioso | Con Next 16 |
 
 Si aparece un aviso nuevo, sobre todo de `next`, se revisa enseguida: Next corre en el servidor.
 

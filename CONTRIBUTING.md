@@ -45,7 +45,7 @@ El email tiene que coincidir con uno verificado en tu cuenta de GitHub, o tus co
 
 ### 2.2 — Java 17
 
-El proyecto compila para Java 17. Un JDK más nuevo funciona, pero si aparece un error raro de compilación o de Lombok, probá con el 17 antes de buscar en otro lado.
+El proyecto compila para Java 17. Un JDK más nuevo funciona hasta Java 26, que es lo que soporta la versión de Lombok del `pom.xml` (con una versión de Lombok que no soporta tu JDK, la compilación falla con `TypeTag :: UNKNOWN`). Si aparece un error raro de compilación o de Lombok, probá con el 17 antes de buscar en otro lado.
 
 ```powershell
 winget install EclipseAdoptium.Temurin.17.JDK
